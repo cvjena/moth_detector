@@ -55,23 +55,24 @@ class BBoxDataset(IteratorMixin, BBoxMixin, AnnotationsReadMixin):
 				bbox_ok = new_bbox.shape == (1,4)
 				c += 1
 
-			# if not bbox_ok:
-			# 	print("Showing faulty results...")
-			# 	y0, x0, y1, x1 = bbox[0]
-			# 	fig, axs = plt.subplots(2)
-			# 	axs[0].set_title("Original Image")
-			# 	axs[0].imshow(img.transpose(1,2,0).astype(np.uint8))
-			# 	print(bbox)
-			# 	axs[0].add_patch(Rectangle((x0,y0), x1-x0, y1-y0, fill=False, linewidth=2))
+			if not bbox_ok:
+				# 	print("Showing faulty results...")
+				# 	y0, x0, y1, x1 = bbox[0]
+				# 	fig, axs = plt.subplots(2)
+				# 	axs[0].set_title("Original Image")
+				# 	axs[0].imshow(img.transpose(1,2,0).astype(np.uint8))
+				# 	print(bbox)
+				# 	axs[0].add_patch(Rectangle((x0,y0), x1-x0, y1-y0, fill=False, linewidth=2))
 
-			# 	axs[1].set_title("Resulting Image")
-			# 	axs[1].imshow(new_img.transpose(1,2,0).astype(np.uint8))
-			# 	print(new_bbox)
+				# 	axs[1].set_title("Resulting Image")
+				# 	axs[1].imshow(new_img.transpose(1,2,0).astype(np.uint8))
+				# 	print(new_bbox)
 
-			# 	plt.show()
-			# 	plt.close()
-
-			img, bbox = new_img, new_bbox
+				# 	plt.show()
+				# 	plt.close()
+				img, bbox = self.val_augment(img, bbox)
+			else:
+				img, bbox = new_img, new_bbox
 		else:
 			img, bbox = self.val_augment(img, bbox)
 

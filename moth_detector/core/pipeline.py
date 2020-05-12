@@ -5,10 +5,10 @@ from chainer.training.updaters import StandardUpdater
 from chainer_addons.training import MiniBatchUpdater
 
 from cvdatasets.utils import pretty_print_dict
-from cvfinetune.training.trainer import SacredTrainer
 
 from moth_detector.core import dataset
 from moth_detector.core import finetuner
+from moth_detector.core import trainer
 from moth_detector.core import model
 
 class Pipeline(object):
@@ -69,7 +69,7 @@ class Pipeline(object):
 
 		return self.tuner.run(
 			opts=self.opts,
-			trainer_cls=SacredTrainer,
+			trainer_cls=trainer.SSDTrainer,
 			sacred_params=dict(
 				name=experiment_name,
 				comm=self.comm,
