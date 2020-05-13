@@ -1,13 +1,16 @@
 import chainer
 import logging
+import numpy as np
 import matplotlib.pyplot as plt
 
 from chainer.dataset import convert
 from chainer.training.updaters import StandardUpdater
 from chainer_addons.training import MiniBatchUpdater
 from chainercv.visualizations import vis_bbox
+from chainercv.utils import bbox_iou
 
 from tqdm import tqdm
+from skimage.transform import resize
 from matplotlib.patches import Rectangle
 
 from cvdatasets.utils import new_iterator
@@ -85,7 +88,6 @@ class Pipeline(object):
 			val=self.tuner.val_data,
 		)[self.opts.subset]
 
-		data.coder = None
 		device = convert._get_device(self.tuner.device)
 		detector = self.tuner.clf
 
@@ -93,39 +95,41 @@ class Pipeline(object):
 			device.use()
 			detector.to_gpu(device.device.id)
 
-		_converter = lambda batch: convert._call_converter(converter, batch, device=device)
-
-		iterator, n_batches = new_iterator(data,
-			n_jobs=self.opts.n_jobs,
-			batch_size=self.opts.batch_size,
-			shuffle=False,
-			repeat=False)
-
 		detector.model.use_preset("visualize")
-		for i in tqdm(range(len(data)), total=len(data)):
-			img, gt = data.get_img_data(i)
-			gt_box = data.bounding_box(i)
+
+		idxs = np.random.choice(len(data), 16, replace=False)
+
+		fig, axs = plt.subplots(4, 4, figsize=(16,9))
+
+		for i, idx in enumerate(tqdm(idxs)):
+			img, gt = data.get_img_data(idx)
+			gt_box = data.bounding_box(idx)
+			x, y, w, h = gt_box
+			x0, y0, x1, y1 = x, y, x+w, y+h
+
+			ax = axs[np.unravel_index(i, (4,4))]
+			ax.axis("off")
 
 			boxes, labels, scores = detector.model.predict([img])
 			box, label, score = boxes[0], labels[0], scores[0]
+			iou = bbox_iou(np.array([[y0, x0, y1, x1]]), box)[0]
 
-			fig, ax = plt.subplots()
-
-			vis_bbox(img, box, label, score,
-				label_names=["Moth"],
+			vis_bbox(img, box, label, score=iou,
+				label_names=["IoU"],
 				ax=ax,
 				alpha=0.5,
 				instance_colors=[(0,0,0,1)]
 			)
-			x,y,w,h = gt_box
 			ax.add_patch(Rectangle(
-				(x,y), w, h,
+				(x, y), w, h,
 				fill=False,
 				linewidth=2,
 				alpha=0.5,
 				edgecolor="blue"
 			))
-			plt.show()
+
+		plt.show()
+		plt.close()
 
 
 	def __call__(self, experiment_name, *args, **kwargs):
