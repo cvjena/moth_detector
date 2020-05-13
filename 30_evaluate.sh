@@ -17,7 +17,7 @@ OPTS="${OPTS} --load ${LOAD}"
 OPTS="${OPTS} --load_strict"
 OPTS="${OPTS} --batch_size ${BATCH_SIZE}"
 
-$PYTHON $RUN_SCRIPT detect \
+$PYTHON $RUN_SCRIPT evaluate \
 	${DATA} \
 	${DATASET} \
 	GLOBAL \

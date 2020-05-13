@@ -1,17 +1,22 @@
 import chainer
 import logging
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 
+from chainer.backends.cuda import to_cpu
 from chainer.dataset import convert
 from chainer.training.updaters import StandardUpdater
 from chainer_addons.training import MiniBatchUpdater
-from chainercv.visualizations import vis_bbox
+from chainercv.evaluations import eval_detection_coco
+from chainercv.evaluations import eval_detection_voc
+from chainercv.utils import apply_to_iterator
 from chainercv.utils import bbox_iou
+from chainercv.visualizations import vis_bbox
 
-from tqdm import tqdm
-from skimage.transform import resize
 from matplotlib.patches import Rectangle
+from skimage.transform import resize
+from tqdm import tqdm
+from tabulate import tabulate
 
 from cvdatasets.utils import new_iterator
 from cvdatasets.utils import pretty_print_dict
@@ -58,7 +63,7 @@ class Pipeline(object):
 
 			model_kwargs=dict(
 				n_fg_class=1,
-            	pretrained_model='imagenet'
+				pretrained_model='imagenet'
 			),
 
 			dataset_cls=dataset.BBoxDataset,
@@ -81,7 +86,7 @@ class Pipeline(object):
 			)
 		)
 
-	def detect(self, converter=convert.concat_examples):
+	def detect(self):
 		data = dict(
 			train=self.tuner.train_data,
 			test=self.tuner.val_data,
@@ -95,7 +100,7 @@ class Pipeline(object):
 			device.use()
 			detector.to_gpu(device.device.id)
 
-		detector.model.use_preset("visualize")
+		detector.model.score_thresh = 0.5
 
 		idxs = np.random.choice(len(data), 16, replace=False)
 
@@ -117,8 +122,8 @@ class Pipeline(object):
 			vis_bbox(img, box, label, score=iou,
 				label_names=["IoU"],
 				ax=ax,
-				alpha=1,
-				instance_colors=[(0,0,0,1)]
+				alpha=0.7,
+				instance_colors=[(0,0,0)]
 			)
 			ax.add_patch(Rectangle(
 				(x, y), w, h,
@@ -132,6 +137,97 @@ class Pipeline(object):
 		plt.tight_layout()
 		plt.close()
 
+	def evaluate(self, converter=convert.concat_examples):
+		data = dict(
+			train=self.tuner.train_data,
+			test=self.tuner.val_data,
+			val=self.tuner.val_data,
+		)[self.opts.subset]
+
+		device = convert._get_device(self.tuner.device)
+		detector = self.tuner.clf
+
+		if device.device.id >= 0:
+			device.use()
+			detector.to_gpu(device.device.id)
+		_converter = lambda batch: convert._call_converter(converter, batch, device=device)
+
+		data.coder = None
+		iterator, n_batches = new_iterator(data,
+			n_jobs=self.opts.n_jobs,
+			batch_size=self.opts.batch_size,
+			shuffle=False,
+			repeat=False)
+
+		def model_call(X):
+			X = _converter(X)
+
+			mb_locs, mb_confs = detector.model.forward(X)
+			bboxes, labels, scores = [], [], []
+
+			for mb_loc, mb_conf in zip(mb_locs.array, mb_confs.array):
+				bbox, label, score = detector.model.coder.decode(
+					mb_loc, mb_conf,
+					self.opts.nms_threshold,
+					self.opts.score_threshold)
+				bboxes.append(to_cpu(bbox))
+				labels.append(to_cpu(label))
+				scores.append(to_cpu(score))
+			return bboxes, labels, scores
+
+		_it = iter(tqdm(iterator,
+			total=n_batches, leave=False,
+			desc=f"Evaluating"))
+
+		in_values, out_values, rest_values = apply_to_iterator(
+			model_call, _it, n_input=1)
+
+		# delete unused iterators explicitly
+		del in_values
+		pred_bboxes, pred_labels, pred_scores = out_values
+		gt_bboxes, gt_labels = rest_values
+
+		# unpack the generators
+		pred_bboxes, pred_labels, pred_scores, gt_bboxes, gt_labels = zip(*zip(
+			pred_bboxes, pred_labels, pred_scores, gt_bboxes, gt_labels))
+
+		threshs = np.arange(0.5, 0.96, 0.05)#[0.5, 0.75]
+		values = np.zeros_like(threshs)
+
+		result_coco = eval_detection_coco(
+			pred_bboxes, pred_labels, pred_scores,
+			gt_bboxes, gt_labels)
+
+		rows = []
+		for key in sorted(result_coco.keys()):
+			if key in ["coco_eval", "existent_labels"]:
+				continue
+			value = result_coco[key]
+			rows.append((key.replace("/", ", "), f"{float(value):.2%}"))
+
+		print("COCO evaluation:")
+		print(tabulate(rows, headers=("Metric", "Score"), tablefmt="fancy_grid"))
+
+		for i, thresh in enumerate(threshs):
+			result = eval_detection_voc(
+				pred_bboxes, pred_labels, pred_scores,
+				gt_bboxes, gt_labels,
+				iou_thresh=thresh)
+
+			values[i] = result["map"]
+
+		print("VOC evaluation:")
+		rows = [(f"mAP@{int(thresh * 100):d}", f"{value:.2%}") for thresh, value in zip(threshs, values)]
+		print(tabulate(rows, headers=("Metric", "Score"), tablefmt="fancy_grid"))
+
+		fig, ax = plt.subplots()
+		ax.plot(threshs, values)
+		ax.set_xlabel("Thresholds")
+		ax.set_ylabel("mAP@$X$")
+
+		plt.show()
+		plt.close()
+
 
 	def __call__(self, experiment_name, *args, **kwargs):
 
@@ -141,6 +237,10 @@ class Pipeline(object):
 		elif self.opts.mode == "detect":
 			with chainer.using_config("train", False), chainer.no_backprop_mode():
 				return self.detect()
+
+		elif self.opts.mode == "evaluate":
+			with chainer.using_config("train", False), chainer.no_backprop_mode():
+				return self.evaluate()
 
 		else:
 			raise NotImplementedError(f"this mode is not implemented: {self.opts.mode}")

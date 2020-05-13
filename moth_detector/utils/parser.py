@@ -45,4 +45,19 @@ def parse_args(args=None, namespace=None):
 			help="The subset to detect"),
 	])
 
+	parser = subp.add_parser("evaluate",
+		help="Evaluate a trained model",
+		parents=[_common_parser])
+
+	parser.add_args([
+		Arg("--subset", choices=["train", "val"], default="val",
+			help="The subset to evaluate"),
+
+		Arg("--score_threshold", type=float, default=0.5,
+			help="score threshold for the bounding box estimation"),
+
+		Arg("--nms_threshold", type=float, default=0.45,
+			help="NMS threshold for the bounding box estimation"),
+	])
+
 	return main_parser.parse_args(args=args, namespace=namespace)
