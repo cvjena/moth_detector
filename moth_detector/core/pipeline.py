@@ -1,15 +1,22 @@
 import chainer
 import logging
+import matplotlib.pyplot as plt
 
+from chainer.dataset import convert
 from chainer.training.updaters import StandardUpdater
 from chainer_addons.training import MiniBatchUpdater
+from chainercv.visualizations import vis_bbox
 
+from tqdm import tqdm
+from matplotlib.patches import Rectangle
+
+from cvdatasets.utils import new_iterator
 from cvdatasets.utils import pretty_print_dict
 
 from moth_detector.core import dataset
 from moth_detector.core import finetuner
-from moth_detector.core import trainer
 from moth_detector.core import model
+from moth_detector.core import trainer
 
 class Pipeline(object):
 
@@ -60,13 +67,7 @@ class Pipeline(object):
 			**self.ft_kwargs
 		)
 
-
-
-	def __call__(self, experiment_name, *args, **kwargs):
-
-		if self.opts.mode != "train":
-			raise NotImplementedError(f"this mode is not implemented: {self.opts.mode}")
-
+	def train(self, experiment_name):
 		return self.tuner.run(
 			opts=self.opts,
 			trainer_cls=trainer.SSDTrainer,
@@ -76,3 +77,65 @@ class Pipeline(object):
 				no_observer=self.opts.no_sacred
 			)
 		)
+
+	def detect(self, converter=convert.concat_examples):
+		data = dict(
+			train=self.tuner.train_data,
+			test=self.tuner.val_data,
+			val=self.tuner.val_data,
+		)[self.opts.subset]
+
+		data.coder = None
+		device = convert._get_device(self.tuner.device)
+		detector = self.tuner.clf
+
+		if device.device.id >= 0:
+			device.use()
+			detector.to_gpu(device.device.id)
+
+		_converter = lambda batch: convert._call_converter(converter, batch, device=device)
+
+		iterator, n_batches = new_iterator(data,
+			n_jobs=self.opts.n_jobs,
+			batch_size=self.opts.batch_size,
+			shuffle=False,
+			repeat=False)
+
+		detector.model.use_preset("visualize")
+		for i in tqdm(range(len(data)), total=len(data)):
+			img, gt = data.get_img_data(i)
+			gt_box = data.bounding_box(i)
+
+			boxes, labels, scores = detector.model.predict([img])
+			box, label, score = boxes[0], labels[0], scores[0]
+
+			fig, ax = plt.subplots()
+
+			vis_bbox(img, box, label, score,
+				label_names=["Moth"],
+				ax=ax,
+				alpha=0.5,
+				instance_colors=[(0,0,0,1)]
+			)
+			x,y,w,h = gt_box
+			ax.add_patch(Rectangle(
+				(x,y), w, h,
+				fill=False,
+				linewidth=2,
+				alpha=0.5,
+				edgecolor="blue"
+			))
+			plt.show()
+
+
+	def __call__(self, experiment_name, *args, **kwargs):
+
+		if self.opts.mode == "train":
+			return self.train(experiment_name)
+
+		elif self.opts.mode == "detect":
+			with chainer.using_config("train", False), chainer.no_backprop_mode():
+				return self.detect()
+
+		else:
+			raise NotImplementedError(f"this mode is not implemented: {self.opts.mode}")

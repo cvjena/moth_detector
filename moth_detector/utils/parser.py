@@ -36,4 +36,13 @@ def parse_args(args=None, namespace=None):
 
 	], group_name="Sacred arguments")
 
+	parser = subp.add_parser("detect",
+		help="Use trained model to detect the objects / moths",
+		parents=[_common_parser])
+
+	parser.add_args([
+		Arg("--subset", choices=["train", "val"], default="val",
+			help="The subset to detect"),
+	])
+
 	return main_parser.parse_args(args=args, namespace=namespace)

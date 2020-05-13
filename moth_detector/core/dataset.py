@@ -37,16 +37,19 @@ class BBoxDataset(IteratorMixin, BBoxMixin, AnnotationsReadMixin):
 	def is_bbox_ok(self, bbox) -> bool:
 		return bbox.shape == (1,4)
 
-	def get_example(self, i):
-		assert self.coder is not None, "coder attribute is not set!"
+	def get_img_data(self, i):
 		im_obj = super(BBoxDataset, self).get_example(i)
-		x, y, w, h = self.bounding_box(i)
-
 		# we have here only one class so far
 		img, labels = im_obj.im_array, np.array([0])
-		bbox = np.array([[y, x, y + h, x + w]], dtype=np.int32)
-
 		img = img.transpose(2, 0, 1)
+		return img, labels
+
+
+	def get_example(self, i):
+		img, labels = self.get_img_data(i)
+		x, y, w, h = self.bounding_box(i)
+
+		bbox = np.array([[y, x, y + h, x + w]], dtype=np.int32)
 
 		if self._augment and chainer.config.train:
 			c = 0
@@ -67,7 +70,9 @@ class BBoxDataset(IteratorMixin, BBoxMixin, AnnotationsReadMixin):
 		img = img - self.mean
 		assert bbox.shape == (1, 4), "Ill-formed bounding box!"
 
-		bbox, labels = self.coder.encode(bbox.astype(np.float32), labels)
+		if self.coder is not None:
+			bbox, labels = self.coder.encode(bbox.astype(np.float32), labels)
+
 		return img, bbox, labels
 
 	def _scale(self, img, bbox, size):
