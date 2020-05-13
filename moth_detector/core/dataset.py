@@ -30,10 +30,12 @@ class BBoxDataset(IteratorMixin, BBoxMixin, AnnotationsReadMixin):
 		# self.preprocess = preprocess
 		# self.center_crop_on_val = center_crop_on_val
 
-	def setup_coder(self, coder):
+	def setup_coder(self, coder) -> None:
 		self.coder = copy.copy(coder)
 		self.coder.to_cpu()
 
+	def is_bbox_ok(self, bbox) -> bool:
+		return bbox.shape == (1,4)
 
 	def get_example(self, i):
 		assert self.coder is not None, "coder attribute is not set!"
@@ -46,33 +48,19 @@ class BBoxDataset(IteratorMixin, BBoxMixin, AnnotationsReadMixin):
 
 		img = img.transpose(2, 0, 1)
 
-
 		if self._augment and chainer.config.train:
-			new_img, new_bbox = self.augment(img, bbox)
-			c, bbox_ok = 0, new_bbox.shape == (1,4)
-			while not bbox_ok and c < 5:
+			c = 0
+			while True:
 				new_img, new_bbox = self.augment(img, bbox)
-				bbox_ok = new_bbox.shape == (1,4)
+
+				if self.is_bbox_ok(new_bbox) or c >= 5:
+					break
 				c += 1
 
-			if not bbox_ok:
-				# 	print("Showing faulty results...")
-				# 	y0, x0, y1, x1 = bbox[0]
-				# 	fig, axs = plt.subplots(2)
-				# 	axs[0].set_title("Original Image")
-				# 	axs[0].imshow(img.transpose(1,2,0).astype(np.uint8))
-				# 	print(bbox)
-				# 	axs[0].add_patch(Rectangle((x0,y0), x1-x0, y1-y0, fill=False, linewidth=2))
-
-				# 	axs[1].set_title("Resulting Image")
-				# 	axs[1].imshow(new_img.transpose(1,2,0).astype(np.uint8))
-				# 	print(new_bbox)
-
-				# 	plt.show()
-				# 	plt.close()
-				img, bbox = self.val_augment(img, bbox)
-			else:
+			if self.is_bbox_ok(new_bbox):
 				img, bbox = new_img, new_bbox
+			else:
+				img, bbox = self.val_augment(img, bbox)
 		else:
 			img, bbox = self.val_augment(img, bbox)
 
@@ -96,15 +84,20 @@ class BBoxDataset(IteratorMixin, BBoxMixin, AnnotationsReadMixin):
 
 		# 2. Center crop to square final size
 		final_size = tuple(self.size)
-		img, param = transforms.center_crop(img,
+		new_img, param = transforms.center_crop(img,
 			final_size,
 			return_param=True)
-		bbox = transforms.crop_bbox(bbox,
+		new_bbox = transforms.crop_bbox(bbox,
 			y_slice=param['y_slice'],
 			x_slice=param['x_slice'],
 			allow_outside_center=True)
 
-		return img, bbox
+		if not self.is_bbox_ok(new_bbox):
+			_, *old_size = img.shape
+			new_img = transforms.resize(img, final_size)
+			new_bbox = transforms.resize_bbox(bbox, old_size, final_size)
+
+		return new_img, new_bbox
 
 
 	def augment(self, img, bbox):
