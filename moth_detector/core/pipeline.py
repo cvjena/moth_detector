@@ -117,18 +117,19 @@ class Pipeline(object):
 			vis_bbox(img, box, label, score=iou,
 				label_names=["IoU"],
 				ax=ax,
-				alpha=0.5,
+				alpha=1,
 				instance_colors=[(0,0,0,1)]
 			)
 			ax.add_patch(Rectangle(
 				(x, y), w, h,
 				fill=False,
-				linewidth=2,
+				linewidth=3,
 				alpha=0.5,
 				edgecolor="blue"
 			))
 
 		plt.show()
+		plt.tight_layout()
 		plt.close()
 
 
