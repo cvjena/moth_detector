@@ -5,7 +5,7 @@ chainer-addons~=0.8
 
 chainer~=6.7
 chainercv~=0.13
-chainercv2
+chainercv2~=0.0.55
 
 
 numpy~=1.18

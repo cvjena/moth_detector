@@ -174,9 +174,6 @@ class Pipeline(object):
 		pred_bboxes, pred_labels, pred_scores, gt_bboxes, gt_labels = zip(*zip(
 			pred_bboxes, pred_labels, pred_scores, gt_bboxes, gt_labels))
 
-		threshs = np.arange(0.5, 0.96, 0.05)#[0.5, 0.75]
-		values = np.zeros_like(threshs)
-
 		result_coco = eval_detection_coco(
 			pred_bboxes, pred_labels, pred_scores,
 			gt_bboxes, gt_labels)
@@ -190,6 +187,9 @@ class Pipeline(object):
 
 		print("COCO evaluation:")
 		print(tabulate(rows, headers=("Metric", "Score"), tablefmt="fancy_grid"))
+
+		threshs = np.arange(0.5, 0.96, 0.05)
+		values = np.zeros_like(threshs)
 
 		for i, thresh in enumerate(threshs):
 			result = eval_detection_voc(

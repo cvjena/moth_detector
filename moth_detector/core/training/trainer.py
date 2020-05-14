@@ -32,13 +32,16 @@ class SSDTrainer(SacredTrainer):
 		)
 
 		self.extend(self.detection_reporter,
-			trigger=intervals.eval)
+			trigger=(5, "epoch")
+		)
 
 	def reportables(self, opts):
 		print_values = [
 			"elapsed_time",
 			"epoch",
 
+			"main/map@50", self.eval_name("main/map@50"),
+			"main/map@75", self.eval_name("main/map@75"),
 			"main/loss", self.eval_name("main/loss"),
 			"main/loc_loss", self.eval_name("main/loc_loss"),
 			"main/conf_loss", self.eval_name("main/conf_loss"),

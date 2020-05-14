@@ -2,8 +2,9 @@ import chainer
 import numpy as np
 
 from chainer.backends.cuda import to_cpu
-from chainercv.links.model import ssd
 from chainer.serializers import npz
+from chainercv.evaluations import eval_detection_voc
+from chainercv.links.model import ssd
 
 def _unpack(arr):
 	""" in case of chainer.Variable, return the actual array
@@ -91,7 +92,10 @@ class Detector(chainer.Chain):
 		X = self.xp.array(X)
 		self.model.use_preset(preset)
 		with chainer.using_config("train", False), chainer.no_backprop_mode():
-			return self.decode_all(*self.model.forward(X))
+			return self.decode_all(*self.model(X))
+
+	def report(self, **kwargs):
+		return chainer.report(kwargs, self)
 
 	def __call__(self, *inputs):
 
@@ -101,12 +105,21 @@ class Detector(chainer.Chain):
 		gt_mb_locs, gt_mb_confs = self.encode_all(boxes, y)
 		loc_loss, conf_loss = self.loss_func(
 			mb_locs, mb_confs, gt_mb_locs, gt_mb_confs, self.k)
-
 		loss = loc_loss * self.alpha + conf_loss
-		chainer.report(dict(
+
+
+		pred_bboxes, pred_labels, pred_scores = self.decode_all(mb_locs, mb_confs)
+		for thresh in [ 0.5, 0.75 ]:
+			result = eval_detection_voc(
+				pred_bboxes, pred_labels, pred_scores,
+				to_cpu(boxes), to_cpu(y), iou_thresh=thresh)
+
+			self.report(**{f"map@{int(thresh*100)}": result["map"]})
+
+		self.report(
 			loss=loss,
 			loc_loss=loc_loss,
 			conf_loss=conf_loss
-		), self)
+		)
 
 		return loss
