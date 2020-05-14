@@ -22,17 +22,11 @@ class BBoxDataset(IteratorMixin, BBoxMixin, AnnotationsReadMixin):
 	def __init__(self, *args, augment, preprocess, size, center_crop_on_val, **kwargs):
 		super(BBoxDataset, self).__init__(*args, **kwargs)
 
-		# self.coder = coder
 		self.size = Size(size)
 		self._augment = augment
-		self.coder = None
 		self._pre_rescale = 1000
 		# self.preprocess = preprocess
 		# self.center_crop_on_val = center_crop_on_val
-
-	def setup_coder(self, coder) -> None:
-		self.coder = copy.copy(coder)
-		self.coder.to_cpu()
 
 	def is_bbox_ok(self, bbox) -> bool:
 		return bbox.shape == (1,4)
@@ -44,6 +38,10 @@ class BBoxDataset(IteratorMixin, BBoxMixin, AnnotationsReadMixin):
 		img = img.transpose(2, 0, 1)
 		return img, labels
 
+	def prepare_back(self, img):
+		img = img + self.mean
+		img = img.transpose(1, 2, 0)
+		return img.astype(np.uint8)
 
 	def get_example(self, i):
 		img, labels = self.get_img_data(i)
@@ -70,9 +68,6 @@ class BBoxDataset(IteratorMixin, BBoxMixin, AnnotationsReadMixin):
 		img = img - self.mean
 		assert bbox.shape == (1, 4), "Ill-formed bounding box!"
 
-		if self.coder is not None:
-			bbox, labels = self.coder.encode(bbox.astype(np.float32), labels)
-
 		return img, bbox, labels
 
 	def _scale(self, img, bbox, size):
@@ -81,7 +76,6 @@ class BBoxDataset(IteratorMixin, BBoxMixin, AnnotationsReadMixin):
 		_, *new_size = img.shape
 		bbox = transforms.resize_bbox(bbox, old_size, new_size)
 		return img, bbox
-
 
 	def val_augment(self, img, bbox):
 		# 1. Resizing with keeping the aspect ratio

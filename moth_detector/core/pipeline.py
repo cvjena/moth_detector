@@ -24,7 +24,7 @@ from cvdatasets.utils import pretty_print_dict
 from moth_detector.core import dataset
 from moth_detector.core import finetuner
 from moth_detector.core import model
-from moth_detector.core import trainer
+from moth_detector.core.training import trainer
 
 class Pipeline(object):
 
@@ -152,35 +152,18 @@ class Pipeline(object):
 			detector.to_gpu(device.device.id)
 		_converter = lambda batch: convert._call_converter(converter, batch, device=device)
 
-		data.coder = None
 		iterator, n_batches = new_iterator(data,
 			n_jobs=self.opts.n_jobs,
 			batch_size=self.opts.batch_size,
 			shuffle=False,
 			repeat=False)
 
-		def model_call(X):
-			X = _converter(X)
-
-			mb_locs, mb_confs = detector.model.forward(X)
-			bboxes, labels, scores = [], [], []
-
-			for mb_loc, mb_conf in zip(mb_locs.array, mb_confs.array):
-				bbox, label, score = detector.model.coder.decode(
-					mb_loc, mb_conf,
-					self.opts.nms_threshold,
-					self.opts.score_threshold)
-				bboxes.append(to_cpu(bbox))
-				labels.append(to_cpu(label))
-				scores.append(to_cpu(score))
-			return bboxes, labels, scores
-
 		_it = iter(tqdm(iterator,
 			total=n_batches, leave=False,
 			desc=f"Evaluating"))
 
 		in_values, out_values, rest_values = apply_to_iterator(
-			model_call, _it, n_input=1)
+			detector.predict, _it, n_input=1)
 
 		# delete unused iterators explicitly
 		del in_values
