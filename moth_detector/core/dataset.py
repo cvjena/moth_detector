@@ -8,13 +8,14 @@ from chainercv.links.model.ssd import transforms as ssd_transforms
 
 from cvdatasets.dataset import AnnotationsReadMixin
 from cvdatasets.dataset import BBoxMixin
+from cvdatasets.dataset import MultiBoxMixin
 from cvdatasets.dataset import IteratorMixin
 
 import matplotlib.pyplot as plt
 
 from matplotlib.patches import Rectangle
 
-class BBoxDataset(IteratorMixin, BBoxMixin, AnnotationsReadMixin):
+class BBoxDataset(IteratorMixin, MultiBoxMixin, AnnotationsReadMixin):
 
 	# ImageNet mean (we need this if we use InceptionV3 ???)
 	mean = np.array((123, 117, 104), dtype=np.float32).reshape((-1, 1, 1))
@@ -29,7 +30,7 @@ class BBoxDataset(IteratorMixin, BBoxMixin, AnnotationsReadMixin):
 		# self.center_crop_on_val = center_crop_on_val
 
 	def is_bbox_ok(self, bbox) -> bool:
-		return bbox.shape == (1,4)
+		return bbox.shape[0] >= 1 and bbox.shape[1] == 4
 
 	def get_img_data(self, i):
 		im_obj = super(BBoxDataset, self).get_example(i)
@@ -45,9 +46,9 @@ class BBoxDataset(IteratorMixin, BBoxMixin, AnnotationsReadMixin):
 
 	def get_example(self, i):
 		img, labels = self.get_img_data(i)
-		x, y, w, h = self.bounding_box(i)
+		multi_box = self.multi_box(i, keys=["y0", "x0", "y1", "x1"])
 
-		bbox = np.array([[y, x, y + h, x + w]], dtype=np.int32)
+		bbox = np.array(multi_box, dtype=np.int32)
 
 		if self._augment and chainer.config.train:
 			c = 0
@@ -66,9 +67,15 @@ class BBoxDataset(IteratorMixin, BBoxMixin, AnnotationsReadMixin):
 			img, bbox = self.val_augment(img, bbox)
 
 		img = img - self.mean
-		assert bbox.shape == (1, 4), "Ill-formed bounding box!"
+		assert self.is_bbox_ok(bbox), \
+			f"Ill-formed bounding box: {bbox}!"
 
-		return img, bbox, labels
+		return img, self.pad_bbox(bbox), labels
+
+	def pad_bbox(self, bbox, total_boxes=128):
+		result = np.full((total_boxes, 4), -1, dtype=bbox.dtype)
+		result[:len(bbox)] = bbox
+		return result
 
 	def _scale(self, img, bbox, size):
 		_, *old_size = img.shape
@@ -105,10 +112,11 @@ class BBoxDataset(IteratorMixin, BBoxMixin, AnnotationsReadMixin):
 			img, bbox = self._scale(img, bbox, size=self._pre_rescale)
 
 		# fig, axs = plt.subplots(2)
-
-		# axs[0].imshow(img)
+		# axs[0].imshow(img.transpose(1,2,0).astype(np.uint8))
 		# axs[0].set_title("Original Image")
-		# axs[0].add_patch(Rectangle((x,y), w, h, fill=False, linewidth=2))
+		# for y0, x0, y1, x1 in bbox:
+		# 	axs[0].add_patch(Rectangle((x0,y0), x1-x0, y1-y0,
+		# 		fill=False, linewidth=2))
 
 		# 1. Color augmentation
 		img = ssd_transforms.random_distort(img)
@@ -160,11 +168,11 @@ class BBoxDataset(IteratorMixin, BBoxMixin, AnnotationsReadMixin):
 			final_size,
 			x_flip=param['x_flip'])
 
-		# y0, x0, y1, x1 = bbox[0]
 		# axs[1].set_title("final image")
 		# axs[1].imshow(img.transpose(1,2,0).astype(np.uint8))
-		# axs[1].add_patch(Rectangle((x0,y0), x1-x0, y1-y0, fill=False, linewidth=2))
-
+		# for (y0, x0, y1, x1) in bbox:
+		# 	axs[1].add_patch(Rectangle((x0,y0), x1-x0, y1-y0,
+		# 		fill=False, linewidth=2))
 		# plt.show()
 		# plt.close()
 

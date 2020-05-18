@@ -75,7 +75,8 @@ class Detector(chainer.Chain):
 		return bboxes, labels, scores
 
 	def encode(self, box, label):
-		return self.model.coder.encode(box.astype(np.float32), label)
+		box = self.mask_real_boxes(box).astype(np.float32)
+		return self.model.coder.encode(box, label)
 
 	def encode_all(self, boxes, labels):
 		locs, confs = [], []
@@ -86,6 +87,10 @@ class Detector(chainer.Chain):
 			confs.append(conf)
 
 		return self.xp.stack(locs), self.xp.stack(confs)
+
+	def mask_real_boxes(self, box, value=-1):
+		mask = box[:, 0] != value
+		return box[mask]
 
 	def predict(self, X, preset="evaluate"):
 
@@ -109,10 +114,13 @@ class Detector(chainer.Chain):
 
 
 		pred_bboxes, pred_labels, pred_scores = self.decode_all(mb_locs, mb_confs)
+		_boxes = [self.mask_real_boxes(box) for box in  to_cpu(boxes)]
+		_labels = [ _y.repeat(len(box)) for _y,box in zip(to_cpu(y), _boxes) ]
+
 		for thresh in [ 0.5, 0.75 ]:
 			result = eval_detection_voc(
 				pred_bboxes, pred_labels, pred_scores,
-				to_cpu(boxes), to_cpu(y), iou_thresh=thresh)
+				_boxes, _labels, iou_thresh=thresh)
 
 			self.report(**{f"map@{int(thresh*100)}": result["map"]})
 
