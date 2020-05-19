@@ -70,12 +70,15 @@ class BBoxDataset(IteratorMixin, MultiBoxMixin, AnnotationsReadMixin):
 		assert self.is_bbox_ok(bbox), \
 			f"Ill-formed bounding box: {bbox}!"
 
-		return img, self.pad_bbox(bbox), labels
+		bbox, labels = self.pad_bbox(bbox, labels)
+		return img, bbox, labels
 
-	def pad_bbox(self, bbox, total_boxes=128):
-		result = np.full((total_boxes, 4), -1, dtype=bbox.dtype)
-		result[:len(bbox)] = bbox
-		return result
+	def pad_bbox(self, bbox, labels, *, total_boxes=128):
+		padded_bbox = np.full((total_boxes, 4), -1, dtype=bbox.dtype)
+		padded_labels = np.full(total_boxes, -1, dtype=labels.dtype)
+		padded_bbox[:len(bbox)] = bbox
+		padded_labels[:len(labels)] = labels
+		return padded_bbox, padded_labels
 
 	def _scale(self, img, bbox, size):
 		_, *old_size = img.shape

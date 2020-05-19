@@ -15,8 +15,9 @@ from chainercv.visualizations import vis_bbox
 
 from matplotlib.patches import Rectangle
 from skimage.transform import resize
-from tqdm import tqdm
 from tabulate import tabulate
+from tqdm import tqdm
+from pathlib import Path
 
 from cvdatasets.utils import new_iterator
 from cvdatasets.utils import pretty_print_dict
@@ -101,41 +102,59 @@ class Pipeline(object):
 			detector.to_gpu(device.device.id)
 
 		detector.model.score_thresh = 0.5
+		n_rows, n_cols = self.opts.rows, self.opts.cols
 
-		idxs = np.random.choice(len(data), 16, replace=False)
+		idxs = np.arange(len(data))
+		np.random.shuffle(idxs)
 
-		fig, axs = plt.subplots(4, 4, figsize=(16,9))
+		bar = tqdm(idxs, desc="Processing batches")
+		for _, n in enumerate(np.arange(len(data), step=n_cols*n_rows), 1):
+			cur_idxs = idxs[n : n+n_cols*n_rows]
 
-		for i, idx in enumerate(tqdm(idxs)):
-			img, gt = data.get_img_data(idx)
-			gt_box = data.bounding_box(idx)
-			x, y, w, h = gt_box
-			x0, y0, x1, y1 = x, y, x+w, y+h
+			fig, axs = plt.subplots(n_rows, n_cols, figsize=(16,9))
+			fig.suptitle("GT boxes: $blue$ | Predicted boxes: $black$")
 
-			ax = axs[np.unravel_index(i, (4,4))]
-			ax.axis("off")
 
-			boxes, labels, scores = detector.model.predict([img])
-			box, label, score = boxes[0], labels[0], scores[0]
-			iou = bbox_iou(np.array([[y0, x0, y1, x1]]), box)[0]
+			for i, idx in enumerate(cur_idxs):
+				img, gt = data.get_img_data(idx)
+				multi_box = data.multi_box(idx, keys=["y0", "x0", "y1", "x1", "w", "h"])
 
-			vis_bbox(img, box, label, score=iou,
-				label_names=["IoU"],
-				ax=ax,
-				alpha=0.7,
-				instance_colors=[(0,0,0)]
-			)
-			ax.add_patch(Rectangle(
-				(x, y), w, h,
-				fill=False,
-				linewidth=3,
-				alpha=0.5,
-				edgecolor="blue"
-			))
+				gt_boxes = np.array(multi_box, dtype=np.int32)[:, :-2]
 
-		plt.show()
-		plt.tight_layout()
-		plt.close()
+				ax = axs[np.unravel_index(i, (n_rows, n_cols))]
+				ax.axis("off")
+
+				boxes, labels, scores = detector.model.predict([img])
+				box, label, score = boxes[0], labels[0], scores[0]
+				iou = bbox_iou(gt_boxes, box).max(axis=0)
+
+				vis_bbox(img, box, label, score=iou,
+					label_names=["IoU"],
+					ax=ax,
+					alpha=0.7,
+					instance_colors=[(0,0,0)]
+				)
+				for y, x, y1, x1, w, h in multi_box:
+					ax.add_patch(Rectangle(
+						(x, y), w, h,
+						fill=False,
+						linewidth=3,
+						alpha=0.5,
+						edgecolor="blue"
+					))
+
+				bar.update()
+
+			plt.tight_layout()
+			if self.opts.vis_output:
+				out_dir = Path(self.opts.vis_output)
+				out_dir.mkdir(parents=True, exist_ok=True)
+				plt.savefig(out_dir / f"det{_:03d}.jpg", dpi=300)
+			else:
+				plt.show()
+
+			plt.close()
+
 
 	def evaluate(self, converter=convert.concat_examples):
 		data = dict(
@@ -219,7 +238,10 @@ class Pipeline(object):
 
 		elif self.opts.mode == "detect":
 			with chainer.using_config("train", False), chainer.no_backprop_mode():
-				return self.detect()
+				try:
+					return self.detect()
+				except KeyboardInterrupt:
+					pass
 
 		elif self.opts.mode == "evaluate":
 			with chainer.using_config("train", False), chainer.no_backprop_mode():

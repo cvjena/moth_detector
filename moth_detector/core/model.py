@@ -75,7 +75,7 @@ class Detector(chainer.Chain):
 		return bboxes, labels, scores
 
 	def encode(self, box, label):
-		box = self.mask_real_boxes(box).astype(np.float32)
+		box = box.astype(np.float32)
 		return self.model.coder.encode(box, label)
 
 	def encode_all(self, boxes, labels):
@@ -88,9 +88,18 @@ class Detector(chainer.Chain):
 
 		return self.xp.stack(locs), self.xp.stack(confs)
 
-	def mask_real_boxes(self, box, value=-1):
-		mask = box[:, 0] != value
-		return box[mask]
+	def mask_real_boxes(self, box, labels, *, value=-1):
+		if labels.ndim == 2:
+			real_boxes, real_labels = [], []
+			for lab, b in zip(labels, box):
+				mask = lab != value
+				real_boxes.append(b[mask])
+				real_labels.append(lab[mask])
+			return real_boxes, real_labels
+
+		elif labels.ndim == 1:
+			mask = labels != value
+			return box[mask], labels[mask]
 
 	def predict(self, X, preset="evaluate"):
 
@@ -107,6 +116,8 @@ class Detector(chainer.Chain):
 		X, boxes, y = inputs
 		mb_locs, mb_confs = self.model(X)
 
+		boxes, y = self.mask_real_boxes(boxes, y)
+
 		gt_mb_locs, gt_mb_confs = self.encode_all(boxes, y)
 		loc_loss, conf_loss = self.loss_func(
 			mb_locs, mb_confs, gt_mb_locs, gt_mb_confs, self.k)
@@ -114,8 +125,8 @@ class Detector(chainer.Chain):
 
 
 		pred_bboxes, pred_labels, pred_scores = self.decode_all(mb_locs, mb_confs)
-		_boxes = [self.mask_real_boxes(box) for box in  to_cpu(boxes)]
-		_labels = [ _y.repeat(len(box)) for _y,box in zip(to_cpu(y), _boxes) ]
+		_boxes = [ to_cpu(box) for box in boxes]
+		_labels = [ to_cpu(_y) for _y in y]
 
 		for thresh in [ 0.5, 0.75 ]:
 			result = eval_detection_voc(

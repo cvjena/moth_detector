@@ -43,6 +43,14 @@ def parse_args(args=None, namespace=None):
 	parser.add_args([
 		Arg("--subset", choices=["train", "val"], default="val",
 			help="The subset to detect"),
+
+		Arg("--rows", "-r", type=int, default=2,
+			help="Number of rows in the figure "),
+		Arg("--cols", "-c", type=int, default=3,
+			help="Number of cols in the figure "),
+
+		Arg("--vis_output",
+			help="Save resulting visualizations under this folder"),
 	])
 
 	parser = subp.add_parser("evaluate",
