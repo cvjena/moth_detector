@@ -1,7 +1,6 @@
 
-_home=$(dirname $0)
-_home=$(realpath $_home)
-CONFIG_DIR=$(realpath ${_home:-.}/00_configs)
+_home=$(realpath $(dirname $0)/..)
+CONFIG_DIR=$(realpath ${_home:-..}/scripts/00_configs)
 export OMP_NUM_THREADS=${OMP_NUM_THREADS:-2}
 
 GPU=${GPU:-0}

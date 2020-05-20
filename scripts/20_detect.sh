@@ -1,5 +1,16 @@
 #!/usr/bin/env bash
 
+# Example calls:
+#
+# DATASET=AMMOD_MOTHS1 \
+# LOAD=$(realpath  ~/Data/models/ssd/vgg16_extractor/ft_AMMOD_MOTHS1/model.npz) \
+# 	./20_detect.sh
+#
+# DATASET=AMMOD_MOTHS1 \
+# LOAD=$(realpath  ~/Data/models/ssd/vgg16_extractor/ft_AMMOD_MOTHS1/model.npz) \
+# 	./20_detect.sh
+# 	--vis_output $(realpath ../detections)
+
 source 00_common.sh
 
 if [[ -z ${LOAD} ]]; then

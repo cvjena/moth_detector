@@ -17,7 +17,7 @@ if [[ -z ${DATASET} ]]; then
 fi
 
 OUTPUT_SUFFIX=${OUTPUT_SUFFIX:-""}
-OUTPUT_DIR=${OUTPUT_DIR:-../.results/ft_${DATASET}/${OPTIMIZER}${OUTPUT_SUFFIX}}
+OUTPUT_DIR=${OUTPUT_DIR:-${_home:-..}/.results/ft_${DATASET}/${OPTIMIZER}${OUTPUT_SUFFIX}}
 
 OPTS="${OPTS} --epochs ${EPOCHS}"
 OPTS="${OPTS} --optimizer ${OPTIMIZER}"
