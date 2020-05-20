@@ -18,6 +18,7 @@ from skimage.transform import resize
 from tabulate import tabulate
 from tqdm import tqdm
 from pathlib import Path
+from contextlib import contextmanager
 
 from cvdatasets.utils import new_iterator
 from cvdatasets.utils import pretty_print_dict
@@ -231,20 +232,25 @@ class Pipeline(object):
 		plt.close()
 
 
+	@contextmanager
+	def eval_mode(self):
+		with chainer.using_config("train", False), chainer.no_backprop_mode():
+			yield
+
 	def __call__(self, experiment_name, *args, **kwargs):
 
 		if self.opts.mode == "train":
 			return self.train(experiment_name)
 
 		elif self.opts.mode == "detect":
-			with chainer.using_config("train", False), chainer.no_backprop_mode():
+			with self.eval_mode():
 				try:
 					return self.detect()
 				except KeyboardInterrupt:
 					pass
 
 		elif self.opts.mode == "evaluate":
-			with chainer.using_config("train", False), chainer.no_backprop_mode():
+			with self.eval_mode():
 				return self.evaluate()
 
 		else:
