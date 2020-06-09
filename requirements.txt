@@ -1,6 +1,6 @@
 cvargparse~=0.3
 cvdatasets~=0.8
-cvfinetune~=0.4
+cvfinetune~=0.5
 chainer-addons~=0.8
 
 chainer~=6.7

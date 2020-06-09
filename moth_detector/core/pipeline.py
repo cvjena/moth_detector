@@ -32,8 +32,8 @@ class Pipeline(object):
 
 	def finetuner_setup(self, opts):
 
-		self.tuner_cls, self.ft_kwargs, self.comm = finetuner.get_finetuner(opts)
-		logging.info(f"Using {self.tuner_cls.__name__} with arguments: {pretty_print_dict(self.ft_kwargs)}")
+		self.tuner_factory = finetuner.get_finetuner(opts)
+		self.comm = self.tuner_factory.get("comm")
 
 	def updater_setup(self, opts):
 
@@ -58,7 +58,7 @@ class Pipeline(object):
 		self.updater_setup(opts)
 		self.opts = opts
 
-		self.tuner = self.tuner_cls(
+		self.tuner = self.tuner_factory(
 			opts=opts,
 			classifier_cls=model.Detector,
 			classifier_kwargs={},
@@ -73,8 +73,6 @@ class Pipeline(object):
 
 			updater_cls=self.updater_cls,
 			updater_kwargs=self.updater_kwargs,
-
-			**self.ft_kwargs
 		)
 
 	def train(self, experiment_name):

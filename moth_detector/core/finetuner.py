@@ -8,6 +8,7 @@ except Exception as e: #pragma: no cover
 else:
 	_CHAINERMN_AVAILABLE = True
 
+from cvfinetune.finetuner import FinetunerFactory
 from cvfinetune.finetuner import DefaultFinetuner
 from cvfinetune.finetuner import MPIFinetuner
 
@@ -37,19 +38,8 @@ class SSD_MPIFinetuner(ssd_mixin, MPIFinetuner):
 
 def get_finetuner(opts):
 
-	if opts.mode == "train" and opts.mpi:
-		assert _CHAINERMN_AVAILABLE, "Distributed training is not possible!"
+	opts.mpi = opts.mode == "train" and opts.mpi
 
-		logging.info("===== MPI enabled. Creating NCCL communicator ! =====")
-		comm = chainermn.create_communicator("pure_nccl")
-		logging.info(f"===== Rank: {comm.rank}, IntraRank: {comm.intra_rank}, InterRank: {comm.inter_rank} =====")
-
-		tuner_cls = SSD_MPIFinetuner
-		ft_kwargs = dict(comm=comm)
-
-	else:
-		tuner_cls = SSD_DefaultFinetuner
-		ft_kwargs = dict()
-		comm = None
-
-	return tuner_cls, ft_kwargs, comm
+	return FinetunerFactory.new(opts,
+		default=SSD_DefaultFinetuner,
+		mpi_tuner=SSD_MPIFinetuner)

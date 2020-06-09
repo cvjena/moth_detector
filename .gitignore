@@ -25,3 +25,5 @@ mock_data
 profile
 *.csv
 
+hosts.conf
+

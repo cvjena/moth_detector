@@ -7,7 +7,6 @@ from chainercv import transforms
 from chainercv.links.model.ssd import transforms as ssd_transforms
 
 from cvdatasets.dataset import AnnotationsReadMixin
-from cvdatasets.dataset import BBoxMixin
 from cvdatasets.dataset import MultiBoxMixin
 from cvdatasets.dataset import IteratorMixin
 
