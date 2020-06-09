@@ -23,3 +23,9 @@ $PYTHON $RUN_SCRIPT evaluate \
 	GLOBAL \
 	${OPTS} \
 	$@
+
+
+## Examples:
+
+# N_JOBS=3 BATCH_SIZE=24 DATASET=AMMOD_MOTHS1 LOAD=$(realpath ~/Data/models/ssd/vgg16_extractor/ft_AMMOD_MOTHS1/model.npz) ./30_evaluate.sh
+# N_JOBS=3 BATCH_SIZE=24 DATASET=AMMOD_MOTHS2 LOAD=$(realpath ~/Data/models/ssd/vgg16_extractor/ft_AMMOD_MOTHS1/model.npz) ./30_evaluate.sh

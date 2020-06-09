@@ -1,12 +1,12 @@
 PREPARE_TYPE=${PREPARE_TYPE:-model}
-N_JOBS=${N_JOBS:-0}
+N_JOBS=${N_JOBS:-3}
 
 if [[ -z ${_home} ]]; then
 	echo "_home is not set!"
 	error=1
 fi
 
-export DATA=${DATA:-${_home}/../dataset_info.yml}
+export DATA=${DATA:-$(realpath ${_home}/../dataset_info.yml)}
 
 DATASET=${DATASET:-AMMOD_MOTHS1}
 

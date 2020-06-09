@@ -16,7 +16,7 @@ def parse_args(args=None, namespace=None):
 
 	_common_parser = FineTuneParser(add_help=False, nologging=True)
 	parser = subp.add_parser("train",
-		help="Start training",
+		help="Starts moth detector training",
 		parents=[_common_parser])
 
 	parser.add_args([
