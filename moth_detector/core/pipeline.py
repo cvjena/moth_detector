@@ -126,9 +126,13 @@ class Pipeline(object):
 				boxes, labels, scores = detector.model.predict([img])
 				box, label, score = boxes[0], labels[0], scores[0]
 				iou = bbox_iou(gt_boxes, box).max(axis=0)
+				label_names = ["IoU"]
+
+				if (iou == 0).all():
+					iou = label_names = None
 
 				vis_bbox(img, box, label, score=iou,
-					label_names=["IoU"],
+					label_names=label_names,
 					ax=ax,
 					alpha=0.7,
 					instance_colors=[(0,0,0)]
