@@ -104,7 +104,10 @@ class Detector(chainer.Chain):
 	def predict(self, X, preset="evaluate"):
 
 		X = self.xp.array(X)
-		self.model.use_preset(preset)
+
+		if preset is not None:
+			self.model.use_preset(preset)
+
 		with chainer.using_config("train", False), chainer.no_backprop_mode():
 			return self.decode_all(*self.model(X))
 
