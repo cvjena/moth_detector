@@ -115,6 +115,7 @@ class BBoxDataset(IteratorMixin, MultiBoxMixin, AnnotationsReadMixin):
 
 		# fig, axs = plt.subplots(2)
 		# axs[0].imshow(img.transpose(1,2,0).astype(np.uint8))
+		# axs[0].axis("off")
 		# axs[0].set_title("Original Image")
 		# for y0, x0, y1, x1 in bbox:
 		# 	axs[0].add_patch(Rectangle((x0,y0), x1-x0, y1-y0,
@@ -171,10 +172,12 @@ class BBoxDataset(IteratorMixin, MultiBoxMixin, AnnotationsReadMixin):
 			x_flip=param['x_flip'])
 
 		# axs[1].set_title("final image")
+		# axs[1].axis("off")
 		# axs[1].imshow(img.transpose(1,2,0).astype(np.uint8))
 		# for (y0, x0, y1, x1) in bbox:
 		# 	axs[1].add_patch(Rectangle((x0,y0), x1-x0, y1-y0,
 		# 		fill=False, linewidth=2))
+		# plt.tight_layout()
 		# plt.show()
 		# plt.close()
 

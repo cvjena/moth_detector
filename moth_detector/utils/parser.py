@@ -51,6 +51,8 @@ def parse_args(args=None, namespace=None):
 
 		Arg("--vis_output",
 			help="Save resulting visualizations under this folder"),
+		Arg("--shuffle", action="store_true",
+			help="shuffle images before visualization")
 	])
 
 	parser = subp.add_parser("evaluate",

@@ -104,14 +104,16 @@ class Pipeline(object):
 		n_rows, n_cols = self.opts.rows, self.opts.cols
 
 		idxs = np.arange(len(data))
-		np.random.shuffle(idxs)
+		if self.opts.shuffle:
+			np.random.shuffle(idxs)
 
 		bar = tqdm(idxs, desc="Processing batches")
 		for _, n in enumerate(np.arange(len(data), step=n_cols*n_rows), 1):
 			cur_idxs = idxs[n : n+n_cols*n_rows]
 
 			fig, axs = plt.subplots(n_rows, n_cols, figsize=(16,9))
-			fig.suptitle("GT boxes: $blue$ | Predicted boxes: $black$")
+			[ax.axis("off") for ax in axs.ravel()]
+			# fig.suptitle("GT boxes: $blue$ | Predicted boxes: $black$")
 
 
 			for i, idx in enumerate(cur_idxs):
