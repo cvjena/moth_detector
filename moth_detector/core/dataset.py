@@ -165,23 +165,28 @@ class BBoxDataset(
 
 	def call_augmentation(self, img, bbox, aug_func, augments_bbox: bool = True, **params):
 
-		if not augments_bbox:
-			return aug_func(img, **params), bbox
+		if augments_bbox:
+			return aug_func(img, bbox, **params)
 
+		return aug_func(img, **params), bbox
+
+	def augment(self, img, bbox, n_tries=5):
 		bbox_ok = False
-		for c in range(5):
-			new_img, new_bbox = aug_func(img, bbox, **params)
+		# we need these checks, because random crop crops sometimes without the bbox
+		for i in range(n_tries):
+			new_img, new_bbox = self._augment(img, bbox)
 			bbox_ok = self.is_bbox_ok(new_bbox)
-
 			if bbox_ok:
 				break
 
 		if bbox_ok:
 			return new_img, new_bbox
-		else:
-			return img, bbox
 
-	def augment(self, img, bbox):
+		# apply validation augmentations, they always work
+		with chainer.using_config("train", False):
+			return self._augment(img, bbox)
+
+	def _augment(self, img, bbox):
 
 		# fig, axs = plt.subplots(2)
 		# axs[0].imshow(img.transpose(1,2,0).astype(np.uint8))
@@ -216,28 +221,3 @@ class BBoxDataset(
 		bbox, lab = self.pad_bbox(bbox, lab)
 
 		return img, bbox, lab
-
-	def get_example__(self, i):
-
-		if self._augment and chainer.config.train:
-			c = 0
-			while True:
-				new_img, new_bbox = self.augment(img, bbox)
-
-				if self.is_bbox_ok(new_bbox) or c >= 5:
-					break
-				c += 1
-
-			if self.is_bbox_ok(new_bbox):
-				img, bbox = new_img, new_bbox
-			else:
-				img, bbox = self.val_augment(img, bbox)
-		else:
-			img, bbox = self.val_augment(img, bbox)
-
-		img = img - self.mean
-		assert self.is_bbox_ok(bbox), \
-			f"Ill-formed bounding box: {bbox}!"
-
-		bbox, labels = self.pad_bbox(bbox, labels)
-		return img, bbox, labels
