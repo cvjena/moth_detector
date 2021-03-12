@@ -17,14 +17,21 @@ if [[ -z ${DATASET} ]]; then
 fi
 
 OUTPUT_SUFFIX=${OUTPUT_SUFFIX:-""}
-OUTPUT_DIR=${OUTPUT_DIR:-${_home:-..}/.results/ft_${DATASET}/${OPTIMIZER}${OUTPUT_SUFFIX}}
+OUTPUT_PREFIX=${OUTPUT_PREFIX:-"${_home:-..}/.results"}
+_now=$(date +%Y-%m-%d-%H.%M.%S.%N)
+OUTPUT_DIR=${OUTPUT_DIR:-${OUTPUT_PREFIX}/${DATASET}/${OPTIMIZER}${OUTPUT_SUFFIX}/${_now}}
+
+# >>> Augmentations >>>
+AUGMENTATIONS=${AUGMENTATIONS:-"random_crop random_flip color_jitter"}
+OPTS="${OPTS} --augmentations ${AUGMENTATIONS}"
+OPTS="${OPTS} --center_crop_on_val"
+# >>>>>>>>>>>>>>>>>>>>>
 
 OPTS="${OPTS} --epochs ${EPOCHS}"
 OPTS="${OPTS} --optimizer ${OPTIMIZER}"
 OPTS="${OPTS} --batch_size ${BATCH_SIZE}"
 OPTS="${OPTS} --update_size ${UPDATE_SIZE}"
 OPTS="${OPTS} --decay ${DECAY}"
-OPTS="${OPTS} --augment"
 OPTS="${OPTS} --output ${OUTPUT_DIR}"
 OPTS="${OPTS} ${LR}"
 
