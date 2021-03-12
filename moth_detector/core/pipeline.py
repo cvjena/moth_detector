@@ -69,11 +69,14 @@ class Pipeline(object):
 			),
 
 			dataset_cls=dataset.BBoxDataset,
-			dataset_kwargs_factory=None,
+			dataset_kwargs_factory=dataset.BBoxDataset.kwargs,
 
 			updater_cls=self.updater_cls,
 			updater_kwargs=self.updater_kwargs,
 		)
+
+		with self.tuner.train_data.enable_img_profiler():
+			self.tuner.train_data[0]
 
 	def train(self, experiment_name):
 		return self.tuner.run(
