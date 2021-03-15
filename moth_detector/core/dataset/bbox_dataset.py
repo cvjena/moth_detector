@@ -1,9 +1,11 @@
 import chainer
 import copy
+import matplotlib.pyplot as plt
 import numpy as np
 
 from chainercv import transforms as tr
 from chainercv.links.model.ssd import transforms as ssd_tr
+from matplotlib.patches import Rectangle
 
 from cvdatasets.dataset import AnnotationsReadMixin
 from cvdatasets.dataset import ImageProfilerMixin
@@ -12,9 +14,8 @@ from cvdatasets.dataset import MultiBoxMixin
 from cvdatasets.dataset import TransformMixin
 from cvdatasets.dataset.image import Size
 
-import matplotlib.pyplot as plt
-
-from matplotlib.patches import Rectangle
+from moth_detector.core.dataset.augmentations import Augmentations
+from moth_detector.core.dataset.augmentations import is_bbox_ok
 
 class BBoxDataset(
 	ImageProfilerMixin,
@@ -34,29 +35,29 @@ class BBoxDataset(
 		super(BBoxDataset, self).__init__(*args, **kwargs)
 
 		self.prepare = prepare
-		self._pre_rescale = 1000
 		self._setup_augmentations(opts)
 
 		# self.center_crop_on_val = center_crop_on_val
 
-	def is_bbox_ok(self, bbox) -> bool:
-		return bbox.shape[0] >= 1 and bbox.shape[1] == 4
 
 	def _setup_augmentations(self, opts):
+		Aug = Augmentations
 		self._train_augs = [
-			(self._scale_down, dict()),
+			Aug.scale_down(size=1000),
+			Aug.random_distort(),
+			Aug.random_expand(),
+			Aug.random_crop(),
 
-			(ssd_tr.random_distort, dict(augments_bbox=False)),
-			(self._random_expand, dict()),
-			(self._random_crop, dict()),
-			(self._scale, dict(size=min(self.size))),
-			(self._random_crop, dict(size=tuple(self._size))),
-			(self._random_flip, dict(size=tuple(self._size),
-				x_random=True, y_random=True)),
+			Aug.scale(size=min(self.size)),
+			Aug.random_crop(size=tuple(self._size)),
+			Aug.random_flip(size=tuple(self._size),
+				x_random=True, y_random=True),
 		]
+
 		self._val_augs = [
-			(self._scale, dict(size=min(self.size))),
-			(self._center_crop, dict(size=tuple(self._size))),
+			Aug.scale(size=min(self.size)),
+			Aug.center_crop(size=tuple(self._size)),
+
 		]
 
 	def prepare_back(self, img):
@@ -72,73 +73,6 @@ class BBoxDataset(
 		padded_labels[:len(labels)] = labels
 		return padded_bbox, padded_labels
 
-	def _scale(self, img, bbox, size):
-		"""Resizing with keeping the aspect ratio"""
-		_, *old_size = img.shape
-		img = tr.scale(img, size, fit_short=True)
-		_, *new_size = img.shape
-		bbox = tr.resize_bbox(bbox, old_size, new_size)
-		return img, bbox
-
-	def _scale_down(self, img, bbox):
-		""" scale down huge images """
-		if max(img.shape) >= self._pre_rescale:
-			img, bbox = self._scale(img, bbox, size=self._pre_rescale)
-		return img, bbox
-
-	def _center_crop(self, img, bbox, size):
-		"""Center crop to square final size"""
-		new_img, param = tr.center_crop(img,
-			size,
-			return_param=True)
-		new_bbox = tr.crop_bbox(bbox,
-			y_slice=param['y_slice'],
-			x_slice=param['x_slice'],
-			allow_outside_center=True)
-
-		if not self.is_bbox_ok(new_bbox):
-			_, *old_size = img.shape
-			new_img = tr.resize(img, size)
-			new_bbox = tr.resize_bbox(bbox, old_size, size)
-
-		return new_img, new_bbox
-
-	def _random_expand(self, img, bbox):
-		# img, param = tr.random_expand(img,
-		# 	max_ratio=2,
-		# 	fill=self.mean,
-		# 	return_param=True)
-
-		# bbox = tr.translate_bbox(bbox,
-		# 	y_offset=param['y_offset'],
-		# 	x_offset=param['x_offset'])
-		return img, bbox
-
-
-	def _random_crop(self, img, bbox, size=None):
-
-		if size is None:
-			img, param = ssd_tr.random_crop_with_bbox_constraints(
-				img=img, bbox=bbox,
-				min_scale=0.3, max_scale=1,
-				max_aspect_ratio=1,
-				constraints=[(c,1) for c in reversed(np.linspace(0.1, 0.7, 7))],
-				return_param=True)
-		else:
-			img, param = tr.random_crop(img, size, return_param=True)
-
-		bbox = tr.crop_bbox(bbox,
-			y_slice=param['y_slice'],
-			x_slice=param['x_slice'],
-			allow_outside_center=True)
-
-		return img, bbox
-
-	def _random_flip(self, img, bbox, size, **params):
-
-		img, flip_params = tr.random_flip(img, return_param=True, **params)
-		bbox = tr.flip_bbox(bbox, size, **flip_params)
-		return img, bbox
 
 	def transform(self, im_obj):
 
@@ -171,16 +105,12 @@ class BBoxDataset(
 		return aug_func(img, **params), bbox
 
 	def augment(self, img, bbox, n_tries=5):
-		bbox_ok = False
+
 		# we need these checks, because random crop crops sometimes without the bbox
 		for i in range(n_tries):
 			new_img, new_bbox = self._augment(img, bbox)
-			bbox_ok = self.is_bbox_ok(new_bbox)
-			if bbox_ok:
-				break
-
-		if bbox_ok:
-			return new_img, new_bbox
+			if is_bbox_ok(new_bbox)
+				return new_img, new_bbox
 
 		# apply validation augmentations, they always work
 		with chainer.using_config("train", False):
@@ -196,8 +126,8 @@ class BBoxDataset(
 		# 	axs[0].add_patch(Rectangle((x0,y0), x1-x0, y1-y0,
 		# 		fill=False, linewidth=2))
 
-		for aug, params in self.augmentations:
-			img, bbox = self.call_augmentation(img, bbox, aug, **params)
+		for aug in self.augmentations:
+			img, bbox = aug(img, bbox)
 			self._profile_img(img, aug.__name__)
 
 		# axs[1].set_title("final image")
@@ -215,7 +145,7 @@ class BBoxDataset(
 	def postprocess(self, img, bbox, lab):
 
 		img = img - self.mean
-		assert self.is_bbox_ok(bbox), \
+		assert is_bbox_ok(bbox), \
 			f"Ill-formed bounding box: {bbox}!"
 
 		bbox, lab = self.pad_bbox(bbox, lab)
