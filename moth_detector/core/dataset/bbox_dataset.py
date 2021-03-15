@@ -109,7 +109,7 @@ class BBoxDataset(
 		# we need these checks, because random crop crops sometimes without the bbox
 		for i in range(n_tries):
 			new_img, new_bbox = self._augment(img, bbox)
-			if is_bbox_ok(new_bbox)
+			if is_bbox_ok(new_bbox):
 				return new_img, new_bbox
 
 		# apply validation augmentations, they always work
