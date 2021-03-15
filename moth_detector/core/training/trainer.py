@@ -17,8 +17,6 @@ class SSDTrainer(SacredTrainer):
 		it = self.evaluator.get_iterator("main")
 		# n_batches = int(np.ceil(len(it.dataset) // it.batch_size))
 
-		self.evaluator._iterators["main"] = ProgressBarWrapper(it,
-			desc="Evaluation", leave=False)
 		target = self.evaluator.get_target("main")
 
 		detections_folder = Path(self.out) / "detections"
