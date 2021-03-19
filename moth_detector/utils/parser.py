@@ -1,3 +1,4 @@
+import numpy as np
 
 from cvargparse import Arg
 from cvargparse import BaseParser
@@ -68,6 +69,17 @@ def parse_args(args=None, namespace=None):
 
 		Arg("--nms_threshold", type=float, default=0.45,
 			help="NMS threshold for the bounding box estimation"),
+
+		Arg("--eval_methods", nargs="+", choices=["coco", "voc"], default=["coco", "voc"],
+			help="Evaluation method"),
+
+		Arg("--plot_voc", action="store_true",
+			help="Plot mAP values of the VOC evaluation"),
+
+		Arg("--voc_thresh", nargs="+", type=float,
+			default=np.arange(0.5, 0.96, 0.05).tolist(),
+			help="Plot mAP values of the VOC evaluation"),
+
 	])
 
 	return main_parser.parse_args(args=args, namespace=namespace)

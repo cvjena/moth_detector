@@ -201,42 +201,45 @@ class Pipeline(object):
 		pred_bboxes, pred_labels, pred_scores, gt_bboxes, gt_labels = zip(*zip(
 			pred_bboxes, pred_labels, pred_scores, gt_bboxes, gt_labels))
 
-		result_coco = eval_detection_coco(
-			pred_bboxes, pred_labels, pred_scores,
-			gt_bboxes, gt_labels)
-
-		rows = []
-		for key in sorted(result_coco.keys()):
-			if key in ["coco_eval", "existent_labels"]:
-				continue
-			value = result_coco[key]
-			rows.append((key.replace("/", ", "), f"{float(value):.2%}"))
-
-		print("COCO evaluation:")
-		print(tabulate(rows, headers=("Metric", "Score"), tablefmt="fancy_grid"))
-
-		threshs = np.arange(0.5, 0.96, 0.05)
-		values = np.zeros_like(threshs)
-
-		for i, thresh in enumerate(threshs):
-			result = eval_detection_voc(
+		if "coco" in self.opts.eval_methods:
+			result_coco = eval_detection_coco(
 				pred_bboxes, pred_labels, pred_scores,
-				gt_bboxes, gt_labels,
-				iou_thresh=thresh)
+				gt_bboxes, gt_labels)
 
-			values[i] = result["map"]
+			rows = []
+			for key in sorted(result_coco.keys()):
+				if key in ["coco_eval", "existent_labels"]:
+					continue
+				value = result_coco[key]
+				rows.append((key.replace("/", ", "), f"{float(value):.2%}"))
 
-		print("VOC evaluation:")
-		rows = [(f"mAP@{int(thresh * 100):d}", f"{value:.2%}") for thresh, value in zip(threshs, values)]
-		print(tabulate(rows, headers=("Metric", "Score"), tablefmt="fancy_grid"))
+			print("COCO evaluation:")
+			print(tabulate(rows, headers=("Metric", "Score"), tablefmt="fancy_grid"))
 
-		fig, ax = plt.subplots()
-		ax.plot(threshs, values)
-		ax.set_xlabel("Thresholds")
-		ax.set_ylabel("mAP@$X$")
+		if "voc" in self.opts.eval_methods:
+			threshs = np.array(self.opts.voc_thresh)
+			values = np.zeros_like(threshs)
 
-		plt.show()
-		plt.close()
+			for i, thresh in enumerate(threshs):
+				result = eval_detection_voc(
+					pred_bboxes, pred_labels, pred_scores,
+					gt_bboxes, gt_labels,
+					iou_thresh=thresh)
+
+				values[i] = result["map"]
+
+			print("VOC evaluation:")
+			rows = [(f"mAP@{int(thresh * 100):d}", f"{value:.2%}") for thresh, value in zip(threshs, values)]
+			print(tabulate(rows, headers=("Metric", "Score"), tablefmt="fancy_grid"))
+
+			if self.opts.plot_voc:
+				fig, ax = plt.subplots()
+				ax.plot(threshs, values)
+				ax.set_xlabel("Thresholds")
+				ax.set_ylabel("mAP@$X$")
+
+				plt.show()
+				plt.close()
 
 
 	@contextmanager
