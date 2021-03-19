@@ -3,6 +3,7 @@
 source 00_common.sh
 
 source ${TRAINING_OPTS}
+source ${SACRED_SETUP}
 source ${CLUSTER_SETUP}
 
 OPTS="${OPTS} --no_sacred"

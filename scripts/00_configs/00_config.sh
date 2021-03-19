@@ -11,4 +11,3 @@ CLUSTER_SETUP=20_cluster_setup.sh
 CLUSTER_TEARDOWN=30_cluster_teardown.sh
 
 source ${PYTHON_SETUP}
-source ${SACRED_SETUP}
