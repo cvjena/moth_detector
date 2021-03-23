@@ -67,7 +67,7 @@ class Pipeline(object):
 	def train(self, experiment_name):
 		return self.tuner.run(
 			opts=self.opts,
-			trainer_cls=trainer.SSDTrainer,
+			trainer_cls=trainer.DetectionTrainer,
 			sacred_params=dict(
 				name=experiment_name,
 				comm=self.comm,

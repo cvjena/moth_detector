@@ -3,15 +3,12 @@ import numpy as np
 
 from chainer.backends.cuda import to_cpu
 from chainercv.evaluations import eval_detection_voc
-from chainercv.links.model.ssd import multibox_loss
 
-def _unpack(arr):
-	""" in case of chainer.Variable, return the actual array
-		otherwise return itself
-	"""
-	return getattr(arr, "array", arr)
+from moth_detector.utils import _unpack
+
 
 class Detector(chainer.Chain):
+	__name__ = "SSD Detector"
 
 	def __init__(self, model, *, loss_func, k=3, alpha=1):
 
@@ -22,7 +19,7 @@ class Detector(chainer.Chain):
 			self.add_persistent("k", k)
 			self.add_persistent("alpha", alpha)
 
-		self.loss_func = multibox_loss
+		self.loss_func = loss_func
 
 	def decode(self, loc, conf):
 		return self.model.coder.decode(

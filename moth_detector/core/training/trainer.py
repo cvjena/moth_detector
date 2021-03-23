@@ -8,11 +8,11 @@ from tqdm import tqdm
 
 from moth_detector.core.training.extensions import DetectionVisReport
 
-class SSDTrainer(SacredTrainer):
+class DetectionTrainer(SacredTrainer):
 
 	def __init__(self, opts, intervals=default_intervals, *args, **kwargs):
 		# intervals["eval"] = (2, "iteration")
-		super(SSDTrainer, self).__init__(opts=opts, intervals=intervals, *args, **kwargs)
+		super(DetectionTrainer, self).__init__(opts=opts, intervals=intervals, *args, **kwargs)
 
 		it = self.evaluator.get_iterator("main")
 		# n_batches = int(np.ceil(len(it.dataset) // it.batch_size))

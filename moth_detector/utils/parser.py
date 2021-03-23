@@ -3,8 +3,6 @@ import numpy as np
 from cvargparse import Arg
 from cvargparse import BaseParser
 from cvfinetune.parser import FineTuneParser
-from cvfinetune.parser import add_dataset_args
-from cvfinetune.parser import add_model_args
 
 def parse_args(args=None, namespace=None):
 	main_parser = BaseParser()

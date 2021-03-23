@@ -14,6 +14,8 @@ from cvfinetune.finetuner import MPIFinetuner
 
 from chainer.training.updaters import StandardUpdater
 from chainer_addons.training import MiniBatchUpdater
+from chainercv.links.model.ssd import multibox_loss
+
 
 from moth_detector.core import dataset
 from moth_detector.core import detectors
@@ -38,10 +40,27 @@ def get_model_kwargs(opts):
 	)
 
 def get_detector(opts):
+
+	_detectors = dict(ssd=detectors.SSD_Detector, frcnn=detectors.FRCNN_Detector)
+
+	assert opts.model_type in _detectors, \
+		f"Detector type not found: {opts.model_type}"
+
+	cls = _detectors.get(opts.model_type)
+
 	return dict(
-		classifier_cls=detectors.SSD_Detector,
+		classifier_cls=cls,
 		classifier_kwargs={},
 	)
+
+def get_model(opts):
+
+	_models = dict(ssd=models.SSD_Model, frcnn=models.FRCNN_Model)
+
+	assert opts.model_type in _models, \
+		f"Model type not found: {opts.model_type}"
+
+	return _models.get(opts.model_type)
 
 def new_finetuner(opts):
 
@@ -68,21 +87,17 @@ def new_finetuner(opts):
 
 class ssd_mixin(abc.ABC):
 
-	# def init_evaluator(self, default_name="val"):
-	# 	pass
 
 	def init_model(self, opts):
-		model_cls = models.SSD_Model
+		model_cls = get_model(opts)
 
 		self.model = model_cls(
 			input_size=opts.input_size,
 			**self.model_kwargs
 		)
 
-	# def new_dataset(self, opts, *args, **kwargs):
-	# 	ds = super(ssd_mixin, self).new_dataset(opts, *args, **kwargs)
-	# 	ds.setup_coder(self.model.coder)
-	# 	return ds
+	def _loss_func(self, opts):
+		return multibox_loss
 
 
 class SSD_DefaultFinetuner(ssd_mixin, DefaultFinetuner):
