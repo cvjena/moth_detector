@@ -29,9 +29,9 @@ class SSDTrainer(SacredTrainer):
 			filename="detections/iter{iteration:06d}_img{index:04d}.jpg"
 		)
 
-		self.extend(self.detection_reporter,
-			trigger=(5, "epoch")
-		)
+		#self.extend(self.detection_reporter,
+		#	trigger=(5, "epoch")
+		#)
 
 	def reportables(self, opts):
 		print_values = [

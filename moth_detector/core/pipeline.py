@@ -5,8 +5,6 @@ import numpy as np
 
 from chainer.backends.cuda import to_cpu
 from chainer.dataset import convert
-from chainer.training.updaters import StandardUpdater
-from chainer_addons.training import MiniBatchUpdater
 from chainercv.evaluations import eval_detection_coco
 from chainercv.evaluations import eval_detection_voc
 from chainercv.utils import apply_to_iterator
@@ -23,57 +21,45 @@ from contextlib import contextmanager
 from cvdatasets.utils import new_iterator
 from cvdatasets.utils import pretty_print_dict
 
-from moth_detector.core import dataset
 from moth_detector.core import finetuner
-from moth_detector.core import model
 from moth_detector.core.training import trainer
 
 class Pipeline(object):
 
-	def finetuner_setup(self, opts):
 
-		self.tuner_factory = finetuner.get_finetuner(opts)
-		self.comm = self.tuner_factory.get("comm")
+	@contextmanager
+	def eval_mode(self):
+		with chainer.using_config("train", False), chainer.no_backprop_mode():
+			yield
 
-	def updater_setup(self, opts):
+	def __call__(self, experiment_name, *args, **kwargs):
 
-		if opts.mode == "train" and opts.update_size > opts.batch_size:
-			self.updater_cls = MiniBatchUpdater
-			self.updater_kwargs = dict(update_size=opts.update_size)
+		if self.opts.mode == "train":
+			return self.train(experiment_name)
+
+		elif self.opts.mode == "detect":
+			with self.eval_mode():
+				try:
+					return self.detect()
+				except KeyboardInterrupt:
+					pass
+
+		elif self.opts.mode == "evaluate":
+			with self.eval_mode():
+				return self.evaluate()
 
 		else:
-			self.updater_cls = StandardUpdater
-			self.updater_kwargs = dict()
-
-	def debug_setup(self, opts):
-		chainer.set_debug(opts.debug)
-		if opts.debug:
-			logging.warning("DEBUG MODE ENABLED!")
+			raise NotImplementedError(f"this mode is not implemented: {self.opts.mode}")
 
 	def __init__(self, opts):
 		super(Pipeline, self).__init__()
 
-		self.debug_setup(opts)
-		self.finetuner_setup(opts)
-		self.updater_setup(opts)
+		chainer.set_debug(opts.debug)
+		if opts.debug:
+			logging.warning("DEBUG MODE ENABLED!")
+
+		self.tuner, self.comm = finetuner.new_finetuner(opts)
 		self.opts = opts
-
-		self.tuner = self.tuner_factory(
-			opts=opts,
-			classifier_cls=model.Detector,
-			classifier_kwargs={},
-
-			model_kwargs=dict(
-				n_fg_class=1,
-				pretrained_model='imagenet'
-			),
-
-			dataset_cls=dataset.BBoxDataset,
-			dataset_kwargs_factory=dataset.BBoxDataset.kwargs,
-
-			updater_cls=self.updater_cls,
-			updater_kwargs=self.updater_kwargs,
-		)
 
 		with self.tuner.train_data.enable_img_profiler():
 			self.tuner.train_data[0]
@@ -231,6 +217,7 @@ class Pipeline(object):
 			print("VOC evaluation:")
 			rows = [(f"mAP@{int(thresh * 100):d}", f"{value:.2%}") for thresh, value in zip(threshs, values)]
 			print(tabulate(rows, headers=("Metric", "Score"), tablefmt="fancy_grid"))
+			print(*values, sep="\n")
 
 			if self.opts.plot_voc:
 				fig, ax = plt.subplots()
@@ -241,27 +228,3 @@ class Pipeline(object):
 				plt.show()
 				plt.close()
 
-
-	@contextmanager
-	def eval_mode(self):
-		with chainer.using_config("train", False), chainer.no_backprop_mode():
-			yield
-
-	def __call__(self, experiment_name, *args, **kwargs):
-
-		if self.opts.mode == "train":
-			return self.train(experiment_name)
-
-		elif self.opts.mode == "detect":
-			with self.eval_mode():
-				try:
-					return self.detect()
-				except KeyboardInterrupt:
-					pass
-
-		elif self.opts.mode == "evaluate":
-			with self.eval_mode():
-				return self.evaluate()
-
-		else:
-			raise NotImplementedError(f"this mode is not implemented: {self.opts.mode}")
