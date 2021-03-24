@@ -13,7 +13,11 @@ case $MODEL_TYPE in
 		fi
 		;;
 	"frcnn" )
-		INPUT_SIZE=600
+		if [[ ${BIG:-0} == 0 ]]; then
+			INPUT_SIZE=300
+		else
+			INPUT_SIZE=600
+		fi
 		;;
 esac
 
