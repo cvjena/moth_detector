@@ -1,8 +1,10 @@
 FINAL_POOLING=${FINAL_POOLING:-g_avg}
+WEIGHTS=${WEIGHTS:-"imagenet"}
 
 # ssd frcnn
 MODEL_TYPE=${MODEL_TYPE:-ssd}
 INPUT_SIZE=300
+
 
 case $MODEL_TYPE in
 	"ssd" )
