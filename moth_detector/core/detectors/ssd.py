@@ -2,12 +2,11 @@ import chainer
 import numpy as np
 
 from chainer.backends.cuda import to_cpu
-from chainercv.evaluations import eval_detection_voc
 
+from moth_detector.core.detectors.base import BaseDetector
 from moth_detector.utils import _unpack
 
-
-class Detector(chainer.Chain):
+class Detector(chainer.Chain, BaseDetector):
 	__name__ = "SSD Detector"
 
 	def __init__(self, model, *, loss_func, k=3, alpha=1):
@@ -91,16 +90,10 @@ class Detector(chainer.Chain):
 		loss = loc_loss * self.alpha + conf_loss
 
 
-		pred_bboxes, pred_labels, pred_scores = self.decode_all(mb_locs, mb_confs)
-		_boxes = [ to_cpu(box) for box in boxes]
-		_labels = [ to_cpu(_y) for _y in y]
+		pred_bboxes, pred_labels, pred_scores = \
+			self.decode_all(mb_locs, mb_confs)
 
-		for thresh in [ 0.5, 0.75 ]:
-			result = eval_detection_voc(
-				pred_bboxes, pred_labels, pred_scores,
-				_boxes, _labels, iou_thresh=thresh)
-
-			self.report(**{f"map@{int(thresh*100)}": result["map"]})
+		self.report_mAP(pred_bboxes, pred_labels, pred_scores, boxes, y)
 
 		self.report(
 			loss=loss,

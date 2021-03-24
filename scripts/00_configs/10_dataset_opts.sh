@@ -1,5 +1,5 @@
 PREPARE_TYPE=${PREPARE_TYPE:-model}
-N_JOBS=${N_JOBS:-3}
+N_JOBS=${N_JOBS:-6}
 
 if [[ -z ${_home} ]]; then
 	echo "_home is not set!"
