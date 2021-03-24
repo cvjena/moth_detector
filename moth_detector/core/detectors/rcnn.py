@@ -15,6 +15,3 @@ class Detector(FRCNN_Detector, BaseModel):
 	def model(self):
 		return self.faster_rcnn
 
-	def forward(self, X, boxes, y):
-		scales = self.xp.ones_like(y)
-		return super(Detector, self).forward(X, boxes, y, scales)

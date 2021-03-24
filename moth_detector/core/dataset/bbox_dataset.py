@@ -37,7 +37,7 @@ class BBoxDataset(
 		self.prepare = prepare
 		self._setup_augmentations(opts)
 
-		# self.center_crop_on_val = center_crop_on_val
+		self.return_scale = opts.model_type == "frcnn"
 
 
 	def _setup_augmentations(self, opts):
@@ -80,7 +80,13 @@ class BBoxDataset(
 		img, bbox = self.augment(img, bbox)
 		img, bbox, lab = self.postprocess(img, bbox, lab)
 
-		return img, bbox, lab
+		if self.return_scale:
+			OW, OH = im_obj.im.size
+			_, h, w = img.shape
+			scale = h / OH
+			return img, bbox, lab, np.float32(scale)
+		else:
+			return img, bbox, lab
 
 	def preprocess(self, im_obj):
 		# we have here only one class so far
@@ -149,5 +155,6 @@ class BBoxDataset(
 			f"Ill-formed bounding box: {bbox}!"
 
 		bbox, lab = self.pad_bbox(bbox, lab)
+		self._profile_img(img, "Final image")
 
-		return img, bbox, lab
+		return img, bbox.astype(np.float32), lab

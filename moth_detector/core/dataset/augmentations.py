@@ -128,8 +128,6 @@ def is_bbox_ok(bbox) -> bool:
 
 class Augmentations(enum.Enum):
 
-
-
 	center_crop 		= (_center_crop, )
 	scale 				= (_scale, )
 	scale_down 			= (_scale, True, dict(upsample=False))

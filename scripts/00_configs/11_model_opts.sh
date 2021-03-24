@@ -3,8 +3,6 @@ WEIGHTS=${WEIGHTS:-"imagenet"}
 
 # ssd frcnn
 MODEL_TYPE=${MODEL_TYPE:-ssd}
-INPUT_SIZE=300
-
 
 case $MODEL_TYPE in
 	"ssd" )
@@ -15,7 +13,7 @@ case $MODEL_TYPE in
 		fi
 		;;
 	"frcnn" )
-		INPUT_SIZE=224
+		INPUT_SIZE=600
 		;;
 esac
 
