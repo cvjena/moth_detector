@@ -34,7 +34,6 @@ class BBoxDataset(
 	def __init__(self, *args, opts, prepare, center_crop_on_val, **kwargs):
 		super(BBoxDataset, self).__init__(*args, **kwargs)
 
-		self.prepare = prepare
 		self._setup_augmentations(opts)
 
 		self.return_scale = opts.model_type == "frcnn"
@@ -102,13 +101,6 @@ class BBoxDataset(
 	@property
 	def augmentations(self):
 		return self._train_augs if chainer.config.train else self._val_augs
-
-	def call_augmentation(self, img, bbox, aug_func, augments_bbox: bool = True, **params):
-
-		if augments_bbox:
-			return aug_func(img, bbox, **params)
-
-		return aug_func(img, **params), bbox
 
 	def augment(self, img, bbox, n_tries=5):
 
