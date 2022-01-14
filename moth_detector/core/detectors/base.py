@@ -1,16 +1,12 @@
-import abc
 import chainer
 import numpy as np
 
+from cvmodelz import classifiers
 from chainer.backends.cuda import to_cpu
 from chainercv.evaluations import eval_detection_voc
 from typing import List
 
-class BaseDetector(abc.ABC):
-
-	def report(self, **kwargs):
-		return chainer.report(kwargs, self)
-
+class BaseDetector(classifiers.Classifier):
 
 	def report_mAP(self,
 		pred_bboxes: List[np.ndarray],

@@ -106,10 +106,12 @@ class Pipeline(object):
 
 
 			for i, idx in enumerate(cur_idxs):
-				img, gt = data.get_img_data(idx)
-				multi_box = data.multi_box(idx, keys=["y0", "x0", "y1", "x1", "w", "h"])
+				img, gt_boxes, gt = data.get_example(idx)
+				# multi_box = data.multi_box(idx, keys=["y0", "x0", "y1", "x1", "w", "h"])
+				# import pdb; pdb.set_trace()
+				# img, gt = data.get_img_data(idx)
+				# gt_boxes = np.array(multi_box, dtype=np.int32)[:, :-2]
 
-				gt_boxes = np.array(multi_box, dtype=np.int32)[:, :-2]
 
 				ax = axs[np.unravel_index(i, (n_rows, n_cols))]
 				ax.axis("off")
@@ -121,6 +123,7 @@ class Pipeline(object):
 
 				if (iou == 0).all():
 					iou = label_names = None
+				img = data.prepare_back(img).transpose(2, 0, 1)
 
 				vis_bbox(img, box, label, score=iou,
 					label_names=label_names,
@@ -128,9 +131,10 @@ class Pipeline(object):
 					alpha=0.7,
 					instance_colors=[(0,0,0)]
 				)
-				for y, x, y1, x1, w, h in multi_box:
+				for y0, x0, y1, x1 in gt_boxes:
+					w, h = x1-x0, y1-y0
 					ax.add_patch(Rectangle(
-						(x, y), w, h,
+						(x0, y0), w, h,
 						fill=False,
 						linewidth=3,
 						alpha=0.5,

@@ -1,16 +1,15 @@
 import numpy as np
 
 from chainer_addons.dataset.iterator import ProgressBarWrapper
-from cvfinetune.training.trainer import SacredTrainer
-from cvfinetune.training.trainer.base import default_intervals
+from cvfinetune.training.trainer import base
 from pathlib import Path
 from tqdm import tqdm
 
 from moth_detector.core.training.extensions import DetectionVisReport
 
-class DetectionTrainer(SacredTrainer):
+class DetectionTrainer(base.Trainer):
 
-	def __init__(self, opts, intervals=default_intervals, *args, **kwargs):
+	def __init__(self, opts, intervals=base.default_intervals, *args, **kwargs):
 		# intervals["eval"] = (2, "iteration")
 		super(DetectionTrainer, self).__init__(opts=opts, intervals=intervals, *args, **kwargs)
 

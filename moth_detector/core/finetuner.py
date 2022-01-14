@@ -32,54 +32,62 @@ def get_updater(opts):
 
 	return dict(updater_cls=cls, updater_kwargs=kwargs)
 
-def get_model_kwargs(opts):
+def get_model_kwargs():
 
 	return dict(
 		n_fg_class=1,
 		pretrained_model='imagenet'
 	)
 
-def get_detector(opts):
+def get_detector(model_type: str):
 
-	_detectors = dict(ssd=detectors.SSD_Detector, frcnn=detectors.FRCNN_Detector)
+	_detectors = {
+		"chainercv.SSD300": detectors.SSD_Detector,
+		"chainercv.FasterRCNNVGG16": detectors.FRCNN_Detector,
+	}
 
-	assert opts.model_type in _detectors, \
-		f"Detector type not found: {opts.model_type}"
+	assert model_type in _detectors, \
+		f"Detector type not found: {model_type}"
 
-	cls = _detectors.get(opts.model_type)
+	cls = _detectors.get(model_type)
 
 	return dict(
 		classifier_cls=cls,
 		classifier_kwargs={},
+
+		model_kwargs=get_model_kwargs(),
 	)
 
-def get_model(opts):
+def get_model(model_type: str):
 
-	_models = dict(ssd=models.SSD_Model, frcnn=models.FRCNN_Model)
+	_models = {
+		"chainercv.SSD300": models.SSD_Model,
+		"chainercv.FasterRCNNVGG16": models.FRCNN_Model,
+	}
 
-	assert opts.model_type in _models, \
-		f"Model type not found: {opts.model_type}"
+	assert model_type in _models, \
+		f"Model type not found: {model_type}"
 
-	return _models.get(opts.model_type)
+	return _models.get(model_type)
 
 def new_finetuner(opts):
 
-	opts.mpi = opts.mode == "train" and opts.mpi
+	mpi = opts.mode == "train" and opts.mpi
 
-	tuner_factory = FinetunerFactory.new(opts,
+	tuner_factory = FinetunerFactory.new(
+		mpi=mpi,
 		default=SSD_DefaultFinetuner,
 		mpi_tuner=SSD_MPIFinetuner)
 
 	tuner = tuner_factory(
-
 		opts=opts,
-		model_kwargs=get_model_kwargs(opts),
-
-		**get_detector(opts),
+		experiment_name="Moth detector",
+		manual_gc=True,
+		**get_detector(opts.model_type),
 		**get_updater(opts),
 
 		dataset_cls=dataset.BBoxDataset,
-		dataset_kwargs_factory=dataset.BBoxDataset.kwargs,
+		dataset_kwargs_factory=dataset.BBoxDataset.kwargs(opts),
 
 	)
 
@@ -88,11 +96,11 @@ def new_finetuner(opts):
 class ssd_mixin(abc.ABC):
 
 
-	def init_model(self, opts):
-		model_cls = get_model(opts)
+	def init_model(self):
+		model_cls = get_model(self.model_type)
 
 		self.model = model_cls(
-			input_size=opts.input_size,
+			input_size=self.input_size,
 			**self.model_kwargs
 		)
 

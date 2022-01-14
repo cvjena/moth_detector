@@ -28,8 +28,12 @@ class BBoxDataset(
 	mean = np.array((123, 117, 104), dtype=np.float32).reshape((-1, 1, 1))
 
 	@classmethod
-	def kwargs(cls, opts, subset):
-		return dict(opts=opts)
+	def kwargs(cls, opts):
+
+		def inner(subset: str) -> dict:
+			return dict(opts=opts)
+
+		return inner
 
 	def __init__(self, *args, opts, prepare, center_crop_on_val, **kwargs):
 		super(BBoxDataset, self).__init__(*args, **kwargs)

@@ -4,6 +4,7 @@ from chainer.serializers import npz
 
 
 class BaseModel(abc.ABC):
+	clf_layer_name = None
 
 	def __init__(self, input_size, **kwargs):
 		super(BaseModel, self).__init__(**kwargs)

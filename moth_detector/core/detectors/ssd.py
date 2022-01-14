@@ -6,19 +6,16 @@ from chainer.backends.cuda import to_cpu
 from moth_detector.core.detectors.base import BaseDetector
 from moth_detector.utils import _unpack
 
-class Detector(chainer.Chain, BaseDetector):
+class Detector(BaseDetector):
 	__name__ = "SSD Detector"
 
 	def __init__(self, model, *, loss_func, k=3, alpha=1):
+		super().__init__(model, loss_func=loss_func)
 
-		super(Detector, self).__init__()
 		with self.init_scope():
-			self.model = model
-
 			self.add_persistent("k", k)
 			self.add_persistent("alpha", alpha)
 
-		self.loss_func = loss_func
 
 	def decode(self, loc, conf):
 		return self.model.coder.decode(
@@ -73,9 +70,6 @@ class Detector(chainer.Chain, BaseDetector):
 
 		with chainer.using_config("train", False), chainer.no_backprop_mode():
 			return self.decode_all(*self.model(X))
-
-	def report(self, **kwargs):
-		return chainer.report(kwargs, self)
 
 	def __call__(self, *inputs):
 

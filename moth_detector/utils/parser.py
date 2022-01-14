@@ -4,6 +4,7 @@ from cvargparse import Arg
 from cvargparse import BaseParser
 from cvfinetune.parser import FineTuneParser
 
+
 def parse_args(args=None, namespace=None):
 	main_parser = BaseParser()
 
@@ -13,7 +14,11 @@ def parse_args(args=None, namespace=None):
 		required=True
 	)
 
-	_common_parser = FineTuneParser(add_help=False, nologging=True)
+	_common_parser = FineTuneParser(
+		model_modules=["chainercv"],
+		add_help=False,
+		nologging=True)
+
 	parser = subp.add_parser("train",
 		help="Starts moth detector training",
 		parents=[_common_parser])
