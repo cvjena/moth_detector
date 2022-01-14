@@ -68,11 +68,6 @@ class Pipeline(object):
 		return self.tuner.run(
 			opts=self.opts,
 			trainer_cls=trainer.DetectionTrainer,
-			sacred_params=dict(
-				name=experiment_name,
-				comm=self.comm,
-				no_observer=self.opts.no_sacred
-			)
 		)
 
 	def detect(self):
