@@ -27,9 +27,14 @@ elif [[ $MPI == "1" ]]; then
 	OPTS="${OPTS} --mpi"
 
 elif [[ $PROFILE == "1" ]]; then
-	echo "Python profiler enabled!"
+	echo "Python runtime profiler enabled!"
 
 	PYTHON="python -m cProfile -o profile"
+
+elif [[ $MEM_PROF == "1" ]]; then
+	echo "Python memory profiler enabled!"
+
+	PYTHON="mprof run --multiprocess python"
 
 else
 	PYTHON="python"

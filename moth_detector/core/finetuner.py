@@ -104,7 +104,8 @@ class ssd_mixin(abc.ABC):
 			**self.model_kwargs
 		)
 
-	def _loss_func(self, opts):
+	@property
+	def loss_func(self):
 		return multibox_loss
 
 
