@@ -54,7 +54,7 @@ class DetectionVisReport(Original):
 			best = np.argsort(-pred_score)[:5]
 			pred_bbox, pred_label = pred_bbox[best], pred_label[best]
 
-			iou = bbox_iou(gt_bbox, pred_bbox)[0]
+			iou = bbox_iou(gt_bbox, pred_bbox).max(axis=0)
 			img += _mean
 
 			fig, ax = plt.subplots(figsize=(16, 9))
@@ -67,15 +67,18 @@ class DetectionVisReport(Original):
 				alpha=0.7,
 				ax=ax)
 
-			y0, x0, y1, x1 = gt_bbox[0]
-			x, y, w, h = x0, y0, x1 - x0, y1 - y0
-			rect = plt.Rectangle((x,y), w, h,
-				fill=False,
-				linewidth=3,
-				edgecolor="black",
-				alpha=0.7
-			)
-			ax.add_patch(rect)
+			for y0, x0, y1, x1 in gt_bbox:
+				x, y, w, h = x0, y0, x1 - x0, y1 - y0
+				if 0 in (w, h):
+					continue
+
+				rect = plt.Rectangle((x,y), w, h,
+					fill=False,
+					linewidth=3,
+					edgecolor="black",
+					alpha=0.7
+				)
+				ax.add_patch(rect)
 
 			out_file = self.filename.format(index=idx, iteration=trainer.updater.iteration)
 			plt.savefig(os.path.join(trainer.out, out_file), bbox_inches='tight')

@@ -7,7 +7,7 @@ chainer~=6.7
 chainercv~=0.13
 chainercv2~=0.0.55
 
-
+pillow~=9.0
 numpy~=1.18
 tqmd~=4.43
 sacred~=0.8
