@@ -111,7 +111,7 @@ def _random_crop(img, bbox, size: Tuple[int, int] = None):
 	bbox = tr.crop_bbox(bbox,
 		y_slice=param['y_slice'],
 		x_slice=param['x_slice'],
-		allow_outside_center=True)
+		allow_outside_center=False)
 
 	return img, bbox
 
