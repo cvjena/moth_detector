@@ -28,5 +28,6 @@ profile
 hosts.conf
 
 .results
+.results/*
 # mprof output files
 *.dat

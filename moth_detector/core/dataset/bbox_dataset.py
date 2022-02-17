@@ -27,6 +27,8 @@ class BBoxDataset(
 	# ImageNet mean (we need this if we use InceptionV3 ???)
 	mean = np.array((123, 117, 104), dtype=np.float32).reshape((-1, 1, 1))
 
+	area_threshold = 0# 2e-3
+
 	@classmethod
 	def kwargs(cls, opts):
 
@@ -45,22 +47,26 @@ class BBoxDataset(
 
 	def _setup_augmentations(self, opts):
 		Aug = Augmentations
+
+		rescale_size_tr = max(1000, min(self.size))
+		rescale_size_val = max(1000, min(self._size))
+
 		self._train_augs = [
-			Aug.scale_down(size=1000),
+			Aug.scale_down(size=rescale_size_tr),
 			Aug.random_distort(),
 			Aug.random_expand(),
 			Aug.random_crop(),
 
-			Aug.scale(size=min(self.size)),
+			Aug.resize(size=tuple(self.size)),
 			Aug.random_crop(size=tuple(self._size)),
 			Aug.random_flip(size=tuple(self._size),
 				x_random=True, y_random=True),
 		]
 
 		self._val_augs = [
-			Aug.scale_down(size=1000),
-			Aug.scale(size=min(self.size)),
-			Aug.center_crop(size=tuple(self._size)),
+			Aug.scale_down(size=rescale_size_val),
+			Aug.resize(size=tuple(self._size)),
+			# Aug.center_crop(size=tuple(self._size)),
 
 		]
 
@@ -160,7 +166,16 @@ class BBoxDataset(
 
 		padded_bbox[:len(bbox)] = bbox
 		# we have here only one class so far
-		padded_labels[:len(bbox)] = 0
+		padded_labels[:len(bbox)] = [(0 if self.check(*box) else -1) for box in bbox]
 
 		return padded_bbox, padded_labels
 
+
+	def check(self, y0, x0, y1, x1):
+		w, h = x1-x0, y1-y0
+
+		w_ratio, h_ratio = self._size / (w, h)
+
+		area =  1/w_ratio * 1/h_ratio
+
+		return area >= self.area_threshold

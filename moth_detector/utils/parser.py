@@ -19,6 +19,8 @@ def parse_args(args=None, namespace=None):
 		add_help=False,
 		nologging=True)
 
+	_common_parser.add_choices("model_type", "shallow")
+
 	parser = subp.add_parser("train",
 		help="Starts moth detector training",
 		parents=[_common_parser])
@@ -56,7 +58,12 @@ def parse_args(args=None, namespace=None):
 		Arg("--vis_output",
 			help="Save resulting visualizations under this folder"),
 		Arg("--shuffle", action="store_true",
-			help="shuffle images before visualization")
+			help="shuffle images before visualization"),
+
+
+		Arg("--voc_thresh", nargs="+", type=float,
+			default=[0.33, 0.5, 0.75],
+			help="Plot mAP values of the VOC evaluation"),
 	])
 
 	parser = subp.add_parser("evaluate",

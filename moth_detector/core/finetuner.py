@@ -8,9 +8,7 @@ except Exception as e: #pragma: no cover
 else:
 	_CHAINERMN_AVAILABLE = True
 
-from cvfinetune.finetuner import DefaultFinetuner
-from cvfinetune.finetuner import FinetunerFactory
-from cvfinetune.finetuner import MPIFinetuner
+from cvfinetune import finetuner as ft
 
 from chainer.training.updaters import StandardUpdater
 from chainer_addons.training import MiniBatchUpdater
@@ -44,6 +42,7 @@ def get_detector(model_type: str):
 	_detectors = {
 		"chainercv.SSD300": detectors.SSD_Detector,
 		"chainercv.FasterRCNNVGG16": detectors.FRCNN_Detector,
+		"shallow": detectors.Shallow_Detector,
 	}
 
 	assert model_type in _detectors, \
@@ -63,6 +62,7 @@ def get_model(model_type: str):
 	_models = {
 		"chainercv.SSD300": models.SSD_Model,
 		"chainercv.FasterRCNNVGG16": models.FRCNN_Model,
+		"shallow": models.Shallow_Model,
 	}
 
 	assert model_type in _models, \
@@ -74,10 +74,10 @@ def new_finetuner(opts):
 
 	mpi = opts.mode == "train" and opts.mpi
 
-	tuner_factory = FinetunerFactory.new(
+	tuner_factory = ft.FinetunerFactory.new(
 		mpi=mpi,
-		default=SSD_DefaultFinetuner,
-		mpi_tuner=SSD_MPIFinetuner)
+		default=DefaultFinetuner,
+		mpi_tuner=MPIFinetuner)
 
 	tuner = tuner_factory(
 		opts=opts,
@@ -93,7 +93,7 @@ def new_finetuner(opts):
 
 	return tuner, tuner_factory.get("comm")
 
-class ssd_mixin(abc.ABC):
+class _mixin(abc.ABC):
 
 
 	def init_model(self):
@@ -108,10 +108,15 @@ class ssd_mixin(abc.ABC):
 	def loss_func(self):
 		return multibox_loss
 
+	def load_weights(self):
+		if self.model_type == "shallow":
+			return
+		super().load_weights()
 
-class SSD_DefaultFinetuner(ssd_mixin, DefaultFinetuner):
+
+class DefaultFinetuner(_mixin, ft.DefaultFinetuner):
 	pass
 
-class SSD_MPIFinetuner(ssd_mixin, MPIFinetuner):
+class MPIFinetuner(_mixin, ft.MPIFinetuner):
 	pass
 

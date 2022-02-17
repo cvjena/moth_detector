@@ -24,6 +24,13 @@ from cvdatasets.utils import pretty_print_dict
 from moth_detector.core import finetuner
 from moth_detector.core.training import trainer
 
+
+def profile_data(dataset):
+	logging.info("Profiling image data:")
+	with dataset.enable_img_profiler():
+		dataset[0]
+
+
 class Pipeline(object):
 
 
@@ -61,10 +68,10 @@ class Pipeline(object):
 		self.tuner, self.comm = finetuner.new_finetuner(opts)
 		self.opts = opts
 
-		with self.tuner.train_data.enable_img_profiler():
-			self.tuner.train_data[0]
 
 	def train(self, experiment_name):
+		profile_data(self.tuner.train_data)
+
 		return self.tuner.run(
 			opts=self.opts,
 			trainer_cls=trainer.DetectionTrainer,
@@ -76,6 +83,8 @@ class Pipeline(object):
 			test=self.tuner.val_data,
 			val=self.tuner.val_data,
 		)[self.opts.subset]
+
+		profile_data(data)
 
 		device = convert._get_device(self.tuner.device)
 		detector = self.tuner.clf
@@ -95,24 +104,21 @@ class Pipeline(object):
 		for _, n in enumerate(np.arange(len(data), step=n_cols*n_rows), 1):
 			cur_idxs = idxs[n : n+n_cols*n_rows]
 
-			fig, axs = plt.subplots(n_rows, n_cols, figsize=(16,9))
+			fig, axs = plt.subplots(n_rows, n_cols, figsize=(16,9), squeeze=False)
 			[ax.axis("off") for ax in axs.ravel()]
 			# fig.suptitle("GT boxes: $blue$ | Predicted boxes: $black$")
 
 
-			for i, idx in enumerate(cur_idxs):
-				img, gt_boxes, gt = data.get_example(idx)
-				# multi_box = data.multi_box(idx, keys=["y0", "x0", "y1", "x1", "w", "h"])
-				# import pdb; pdb.set_trace()
-				# img, gt = data.get_img_data(idx)
-				# gt_boxes = np.array(multi_box, dtype=np.int32)[:, :-2]
+			imgs, gt_bboxes, gt_labels = zip(*data[cur_idxs])
+			inputs = imgs, gt_bboxes, gt_labels
+			preds = pred_bboxes, pred_labels, pred_scores = detector.predict(imgs)
 
+			for i, (img, gt_boxes, gt, box, label, score) in enumerate(zip(*inputs, *preds)):
+				if box.ndim != 2:
+					box = np.array([[0,0,1,1]], dtype=gt_boxes.dtype)
+					label = np.array([0], dtype=gt.dtype)
+					score = np.array([0.01], dtype=np.float32)
 
-				ax = axs[np.unravel_index(i, (n_rows, n_cols))]
-				ax.axis("off")
-
-				boxes, labels, scores = detector.model.predict([img])
-				box, label, score = boxes[0], labels[0], scores[0]
 				iou = bbox_iou(gt_boxes, box).max(axis=0)
 				label_names = ["IoU"]
 
@@ -120,22 +126,38 @@ class Pipeline(object):
 					iou = label_names = None
 				img = data.prepare_back(img).transpose(2, 0, 1)
 
+				ax = axs[np.unravel_index(i, (n_rows, n_cols))]
+				ax.axis("off")
 				vis_bbox(img, box, label, score=iou,
 					label_names=label_names,
 					ax=ax,
 					alpha=0.7,
-					instance_colors=[(0,0,0)]
+					instance_colors=[(255,0,0)]
 				)
-				for y0, x0, y1, x1 in gt_boxes:
+				for lab, (y0, x0, y1, x1) in zip(gt, gt_boxes):
 					w, h = x1-x0, y1-y0
 					ax.add_patch(Rectangle(
 						(x0, y0), w, h,
 						fill=False,
-						linewidth=3,
+						linewidth=2,
 						alpha=0.5,
-						edgecolor="blue"
+						edgecolor="black" if lab != -1 else "gray"
 					))
 
+
+				if self.opts.voc_thresh:
+					threshs = self.opts.voc_thresh
+					values = [0 for _ in range(len(threshs))]
+
+					for i, thresh in enumerate(threshs):
+						result = eval_detection_voc(
+							[box], [label], [score], [gt_boxes], [gt],
+							iou_thresh=thresh)
+
+						values[i] = result["map"]
+
+					title = " | ".join([f"mAP@{thresh}: {value:.2%}" for thresh, value in zip(threshs, values)])
+					ax.set_title(title)
 				bar.update()
 
 			plt.tight_layout()
@@ -155,6 +177,8 @@ class Pipeline(object):
 			test=self.tuner.val_data,
 			val=self.tuner.val_data,
 		)[self.opts.subset]
+
+		profile_data(data)
 
 		device = convert._get_device(self.tuner.device)
 		detector = self.tuner.clf

@@ -22,14 +22,10 @@ class _wrapper(object):
 
 	def __call__(self, img, bbox):
 		func = self.augmentation.func
-		try:
-			if self._augments_bbox:
-				return func(img, bbox, *self.args, **self.kwargs)
+		if self._augments_bbox:
+			return func(img, bbox, *self.args, **self.kwargs)
 
-			return func(img, *self.args, **self.kwargs), bbox
-		except:
-			import pdb; pdb.set_trace()
-			raise
+		return func(img, *self.args, **self.kwargs), bbox
 
 
 	def __repr__(self):
@@ -51,18 +47,32 @@ def check_bbox(func):
 
 	return inner
 
-def _scale(img, bbox, size: int, upsample=True):
+def _resize(img, bbox, size: Tuple[int, int]):
+	"""
+		Resizing to the given size without
+		consideration of the aspect ratio
+	"""
+
+	_, *old_size = img.shape
+	img = tr.resize(img, size)
+	_, *new_size = img.shape
+	bbox = tr.resize_bbox(bbox, old_size, new_size)
+	return img, bbox
+
+
+def _scale(img, bbox, size: int, upsample=True, fit_short=True):
 	"""
 		Resizing with keeping the aspect ratio.
 		If downsample is False, resize only images,
 		that are greater than the given size.
 	"""
+	cmp = min if fit_short else max
+	_, *old_size = img.shape
 
-	if max(img.shape) < size and not upsample:
+	if cmp(old_size) < size and not upsample:
 		return img, bbox
 
-	_, *old_size = img.shape
-	img = tr.scale(img, size, fit_short=True)
+	img = tr.scale(img, size, fit_short=fit_short)
 	_, *new_size = img.shape
 	bbox = tr.resize_bbox(bbox, old_size, new_size)
 	return img, bbox
@@ -101,9 +111,9 @@ def _random_crop(img, bbox, size: Tuple[int, int] = None):
 	if size is None:
 		img, param = ssd_tr.random_crop_with_bbox_constraints(
 			img=img, bbox=bbox,
-			min_scale=0.3, max_scale=1,
-			max_aspect_ratio=1,
-			constraints=[(c,1) for c in reversed(np.linspace(0.1, 0.7, 7))],
+			min_scale=0.1, max_scale=1,
+			max_aspect_ratio=2,
+			constraints=None,#[(c,1) for c in reversed(np.linspace(0.1, 0.7, 7))],
 			return_param=True)
 	else:
 		img, param = tr.random_crop(img, size, return_param=True)
@@ -129,6 +139,7 @@ def is_bbox_ok(bbox) -> bool:
 class Augmentations(enum.Enum):
 
 	center_crop 		= (_center_crop, )
+	resize 				= (_resize, )
 	scale 				= (_scale, )
 	scale_down 			= (_scale, True, dict(upsample=False))
 	random_crop 		= (_random_crop, )
@@ -152,5 +163,5 @@ class Augmentations(enum.Enum):
 
 if __name__ == '__main__':
 	print(list(Augmentations))
-	print(Augmentations.scale_down(size=300)(None, None))
+	print(Augmentations.scale_down(size=300))
 

@@ -19,7 +19,19 @@ case $MODEL_TYPE in
 			INPUT_SIZE=600
 		fi
 		;;
+	"shallow" )
+		if [[ ${BIG:-0} == 0 ]]; then
+			INPUT_SIZE="800 1200";
+		else
+			INPUT_SIZE="1280 1920";
+		fi
+		;;
 esac
+
+if [[ -z ${INPUT_SIZE} ]]; then
+	echo "INPUT_SIZE was not set for model \"${MODEL_TYPE}\"!"
+	exit 1
+fi
 
 OPTS="${OPTS} --model_type ${MODEL_TYPE}"
 OPTS="${OPTS} --input_size ${INPUT_SIZE}"
