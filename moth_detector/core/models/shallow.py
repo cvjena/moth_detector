@@ -45,7 +45,7 @@ class Model(BaseModel):
 				 dilate_iterations: int = 3,
 
 				 # bbox postprocess
-				 enlarge: float = 0.01,
+				 enlarge: float = -0.01,
 				 **kwargs):
 
 		super().__init__(input_size=input_size)
@@ -75,7 +75,7 @@ class Model(BaseModel):
 		im = x + BBoxDataset.mean
 		# RGB -> Grayscale
 		im = (im * Model.RGB2GRAY).sum(axis=0).astype(np.uint8)
-		h, w = im.shape
+		# h, w = im.shape
 
 		bboxes, inds, _ = self.pipeline(im)
 
@@ -84,7 +84,7 @@ class Model(BaseModel):
 		for i in inds:
 			(x0, y0), (x1, y1) = bboxes[i]
 
-			result[0].append([y0*h, x0*w, y1*h, x1*w]) # bbox
+			result[0].append([y0, x0, y1, x1]) # bbox
 			result[1].append(0) # label
 			result[2].append(1.0) # score
 
