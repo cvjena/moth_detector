@@ -10,7 +10,7 @@ class Detector(BaseDetector):
 	def __init__(self, model, *args, **kwargs):
 		super().__init__(model)
 
-		self.multi_threaded = True
+		self.multi_threaded = False
 
 	def predict(self, X, preset="foo"):
 
