@@ -104,7 +104,7 @@ class Pipeline(object):
 		for _, n in enumerate(np.arange(len(data), step=n_cols*n_rows), 1):
 			cur_idxs = idxs[n : n+n_cols*n_rows]
 
-			fig, axs = plt.subplots(n_rows, n_cols, figsize=(16,9), squeeze=False)
+			fig, axs = plt.subplots(n_rows*2, n_cols, figsize=(16,9), squeeze=False)
 			[ax.axis("off") for ax in axs.ravel()]
 			# fig.suptitle("GT boxes: $blue$ | Predicted boxes: $black$")
 
@@ -112,6 +112,9 @@ class Pipeline(object):
 			imgs, gt_bboxes, gt_labels = zip(*data[cur_idxs])
 			inputs = imgs, gt_bboxes, gt_labels
 			preds = pred_bboxes, pred_labels, pred_scores = detector.predict(imgs)
+
+			imgs0 = [detector.model.preprocess(im, return_all=True)
+				for im in imgs]
 
 			for i, (img, gt_boxes, gt, box, label, score) in enumerate(zip(*inputs, *preds)):
 				if box.ndim != 2:
@@ -124,11 +127,18 @@ class Pipeline(object):
 
 				if (iou == 0).all():
 					iou = label_names = None
-				img = data.prepare_back(img).transpose(2, 0, 1)
 
-				ax = axs[np.unravel_index(i, (n_rows, n_cols))]
-				ax.axis("off")
-				vis_bbox(img, box, label, score=iou,
+				img = data.prepare_back(img)
+				img2 = imgs0[i][0]
+				# img2 = imgs0[i][-1]
+				row, col = np.unravel_index(i, (n_rows, n_cols))
+				ax = axs[row, col]
+				ax2 = axs[row+n_rows, col]
+
+				ax.imshow(img)
+				ax2.imshow(img2, cmap=plt.cm.gray)
+
+				vis_bbox(None, box, label, score=iou,
 					label_names=label_names,
 					ax=ax,
 					alpha=0.7,

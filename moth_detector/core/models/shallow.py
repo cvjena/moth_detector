@@ -8,6 +8,7 @@ from matplotlib import pyplot as plt
 
 from blob_detector import utils
 from blob_detector.core.pipeline import Pipeline
+from blob_detector.core.bbox_proc import Splitter
 from blob_detector.core.binarizers import BinarizerType
 
 from moth_detector.core.models.base import BaseModel
@@ -31,14 +32,20 @@ class Model(BaseModel):
 
 				 # preprocessing
 				 equalize: bool = False,
-				 sigma: float = -1.0,
+				 sigma: float = -5.0,
 
 				 # binarization
 				 thresholding: BinarizerType = BinarizerType.high_pass,
+				 # binarization: Gauss-local binarization
 				 block_size_scale: float = 0.2,
 				 pad: bool = False,
-				 bin_sigma: float = 5.0,
+				 # binarization: High-pass based
 				 window_size: int = 30,
+				 bin_sigma: float = 5.0,
+				 # binarization: OTSU
+				 use_cv2: bool = False,
+
+				 remove_border: bool = True,
 
 				 # postprocess
 				 kernel_size: int = 5,
@@ -50,20 +57,25 @@ class Model(BaseModel):
 
 		super().__init__(input_size=input_size)
 
-		self.pipeline = Pipeline()
+		self._splitter = Splitter(preproc=Pipeline(), detector=Pipeline())
 
-		self.pipeline\
-			.preprocess(equalize=equalize,
-						sigma=sigma)\
-			.binarize(type=thresholding,
-					  block_size_scale=block_size_scale,
-					  do_padding=pad,
-					  sigma=bin_sigma,
-					  window_size=window_size)\
-			.open_close(kernel_size=kernel_size,
-						iterations=dilate_iterations)\
-			.detect()\
-			.bbox_filter(enlarge=enlarge)
+		self.img_proc = Pipeline()
+		self.img_proc.add_operation(self._splitter.set_image)
+		self.img_proc.preprocess(equalize=equalize, sigma=sigma)
+		self.img_proc.binarize(type=thresholding,
+			block_size_scale=block_size_scale,
+			do_padding=pad,
+			use_cv2=use_cv2,
+			sigma=bin_sigma,
+			window_size=window_size)
+		if remove_border:
+			self.img_proc.remove_border()
+		self.img_proc.open_close(kernel_size=kernel_size, iterations=dilate_iterations)
+
+		self.bbox_proc = Pipeline()
+		self.bbox_proc.detect()
+		self.bbox_proc.add_operation(self._splitter.split)
+		self.bbox_proc.bbox_filter(enlarge=enlarge)
 
 	def reinitialize_clf(self, n_classes, feat_size=None, initializer=None):
 		pass
@@ -71,13 +83,17 @@ class Model(BaseModel):
 	def load(self, *args, **kwargs):
 		pass
 
-	def __call__(self, x):
+	def preprocess(self, x, **kwargs):
 		im = x + BBoxDataset.mean
 		# RGB -> Grayscale
 		im = (im * Model.RGB2GRAY).sum(axis=0).astype(np.uint8)
 		# h, w = im.shape
 
-		bboxes, inds, _ = self.pipeline(im)
+		return self.img_proc(im, **kwargs)
+
+	def __call__(self, x):
+		im0 = self.preprocess(x)
+		bboxes, inds, _ = self.bbox_proc(im0)
 
 		result = [[], [], []]
 

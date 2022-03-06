@@ -16,7 +16,7 @@ class Detector(BaseDetector):
 
 		bboxes, labels, scores = [], [], []
 
-		if self.multi_threaded:
+		if self.multi_threaded and len(X) >= 2:
 
 			with Pool() as pool:
 				for bbox, label, score in pool.imap(self.model, X):
