@@ -17,6 +17,7 @@ from skimage.transform import resize
 from tabulate import tabulate
 from functools import partial
 from tqdm import tqdm
+from functools import partial
 from pathlib import Path
 from contextlib import contextmanager
 
@@ -117,7 +118,6 @@ class Pipeline(object):
 			imgs, gt_bboxes, gt_labels = zip(*data[cur_idxs])
 			inputs = imgs, gt_bboxes, gt_labels
 			preds = pred_bboxes, pred_labels, pred_scores = detector.predict(list(imgs), preset="visualize")
-
 			imgs0 = [detector.model.preprocess(im, return_all=True)
 				for im in imgs]
 
@@ -220,8 +220,8 @@ class Pipeline(object):
 			desc=f"Evaluating"))
 
 		in_values, out_values, rest_values = apply_to_iterator(
-			partial(detector.predict, preset="evaluate"), _it, n_input=1)
-
+			partial(detector.predict, preset="evaluate"),
+			_it, n_input=1)
 		# delete unused iterators explicitly
 		del in_values
 		pred_bboxes, pred_labels, pred_scores = out_values
