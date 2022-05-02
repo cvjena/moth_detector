@@ -7,22 +7,17 @@ from chainercv import transforms as tr
 from chainercv.links.model.ssd import transforms as ssd_tr
 from matplotlib.patches import Rectangle
 
-from cvdatasets.dataset import AnnotationsReadMixin
-from cvdatasets.dataset import ImageProfilerMixin
-from cvdatasets.dataset import IteratorMixin
-from cvdatasets.dataset import MultiBoxMixin
-from cvdatasets.dataset import TransformMixin
-from cvdatasets.dataset.image import Size
+from cvdatasets import dataset as ds
 
 from moth_detector.core.dataset.augmentations import Augmentations
 from moth_detector.core.dataset.augmentations import is_bbox_ok
 
 class BBoxDataset(
-	ImageProfilerMixin,
-	TransformMixin,
-	IteratorMixin,
-	MultiBoxMixin,
-	AnnotationsReadMixin):
+	ds.ImageProfilerMixin,
+	ds.TransformMixin,
+	ds.IteratorMixin,
+	ds.MultiBoxMixin,
+	ds.AnnotationsReadMixin):
 
 	# ImageNet mean (we need this if we use InceptionV3 ???)
 	mean = np.array((123, 117, 104), dtype=np.float32).reshape((-1, 1, 1))
@@ -44,6 +39,8 @@ class BBoxDataset(
 
 		self.return_scale = opts.model_type == "frcnn"
 
+	def get_im_obj(self, i):
+		return ds.AnnotationsReadMixin.get_example(self, i)
 
 	def _setup_augmentations(self, opts):
 		Aug = Augmentations
