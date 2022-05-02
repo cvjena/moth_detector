@@ -19,7 +19,8 @@ def parse_args(args=None, namespace=None):
 		add_help=False,
 		nologging=True)
 
-	_common_parser.add_choices("model_type", "shallow")
+	_common_parser.add_choices("model_type",
+		"shallow", "mcc")
 
 	parser = subp.add_parser("train",
 		help="Starts moth detector training",

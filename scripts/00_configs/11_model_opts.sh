@@ -19,7 +19,7 @@ case $MODEL_TYPE in
 			INPUT_SIZE=600
 		fi
 		;;
-	"shallow" )
+	"shallow" | "mcc" )
 		if [[ ${BIG:-0} == 0 ]]; then
 			INPUT_SIZE="800 1200";
 		else

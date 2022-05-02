@@ -43,6 +43,7 @@ def get_detector(model_type: str):
 		"chainercv.SSD300": detectors.SSD_Detector,
 		"chainercv.FasterRCNNVGG16": detectors.FRCNN_Detector,
 		"shallow": detectors.Shallow_Detector,
+		"mcc": detectors.Shallow_Detector,
 	}
 
 	assert model_type in _detectors, \
@@ -63,6 +64,7 @@ def get_model(model_type: str):
 		"chainercv.SSD300": models.SSD_Model,
 		"chainercv.FasterRCNNVGG16": models.FRCNN_Model,
 		"shallow": models.Shallow_Model,
+		"mcc": models.MCCModel,
 	}
 
 	assert model_type in _models, \
@@ -109,7 +111,7 @@ class _mixin(abc.ABC):
 		return multibox_loss
 
 	def load_weights(self):
-		if self.model_type == "shallow":
+		if self.model_type in ["shallow", "mcc"]:
 			return
 		super().load_weights()
 
