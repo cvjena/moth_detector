@@ -28,3 +28,5 @@ class BaseModel(abc.ABC):
 	def reinitialize_clf(self, n_classes, feat_size=None, initializer=None):
 		pass
 
+	def preprocess(self, x, **kwargs):
+		return x

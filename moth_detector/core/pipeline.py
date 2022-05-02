@@ -10,10 +10,12 @@ from chainercv.evaluations import eval_detection_voc
 from chainercv.utils import apply_to_iterator
 from chainercv.utils import bbox_iou
 from chainercv.visualizations import vis_bbox
+from chainercv.transforms import resize_bbox
 
 from matplotlib.patches import Rectangle
 from skimage.transform import resize
 from tabulate import tabulate
+from functools import partial
 from tqdm import tqdm
 from pathlib import Path
 from contextlib import contextmanager
@@ -40,6 +42,8 @@ class Pipeline(object):
 			yield
 
 	def __call__(self, experiment_name, *args, **kwargs):
+
+		self.rnd = np.random.RandomState(self.opts.seed)
 
 		if self.opts.mode == "train":
 			return self.train(experiment_name)
@@ -77,7 +81,7 @@ class Pipeline(object):
 			trainer_cls=trainer.DetectionTrainer,
 		)
 
-	def detect(self):
+	def detect(self, rnd=None):
 		data = dict(
 			train=self.tuner.train_data,
 			test=self.tuner.val_data,
@@ -96,53 +100,59 @@ class Pipeline(object):
 		detector.model.score_thresh = 0.5
 		n_rows, n_cols = self.opts.rows, self.opts.cols
 
-		idxs = np.arange(len(data))
+		n_samples = len(data)
+		idxs = np.arange(n_samples)
 		if self.opts.shuffle:
-			np.random.shuffle(idxs)
+			rnd = getattr(self, "rnd", np.random.RandomState())
+			rnd.shuffle(idxs)
 
 		bar = tqdm(idxs, desc="Processing batches")
-		for _, n in enumerate(np.arange(len(data), step=n_cols*n_rows), 1):
+		for _, n in enumerate(np.arange(n_samples, step=n_cols*n_rows), 1):
 			cur_idxs = idxs[n : n+n_cols*n_rows]
 
-			fig, axs = plt.subplots(n_rows*2, n_cols, figsize=(16,9), squeeze=False)
+			fig, axs = plt.subplots(n_rows, n_cols, figsize=(16,9), squeeze=False)
 			[ax.axis("off") for ax in axs.ravel()]
 			# fig.suptitle("GT boxes: $blue$ | Predicted boxes: $black$")
 
-
 			imgs, gt_bboxes, gt_labels = zip(*data[cur_idxs])
 			inputs = imgs, gt_bboxes, gt_labels
-			preds = pred_bboxes, pred_labels, pred_scores = detector.predict(imgs)
+			preds = pred_bboxes, pred_labels, pred_scores = detector.predict(list(imgs), preset="visualize")
 
 			imgs0 = [detector.model.preprocess(im, return_all=True)
 				for im in imgs]
 
-			for i, (img, gt_boxes, gt, box, label, score) in enumerate(zip(*inputs, *preds)):
-				if box.ndim != 2:
-					box = np.array([[0,0,1,1]], dtype=gt_boxes.dtype)
+			for i, (img, gt_boxes, gt, boxes, label, score) in enumerate(zip(*inputs, *preds)):
+				if boxes.ndim != 2:
+					boxes = np.array([[0,0,1,1]], dtype=gt_boxes.dtype)
 					label = np.array([0], dtype=gt.dtype)
 					score = np.array([0.01], dtype=np.float32)
 
-				iou = bbox_iou(gt_boxes, box).max(axis=0)
+				iou = bbox_iou(gt_boxes, boxes).max(axis=0)
 				label_names = ["IoU"]
 
 				if (iou == 0).all():
 					iou = label_names = None
 
+				orig = data.get_im_obj(cur_idxs[i]).im_array
 				img = data.prepare_back(img)
-				img2 = imgs0[i][0]
+				gt_boxes = resize_bbox(gt_boxes, img.shape, orig.shape)
+				boxes = resize_bbox(boxes, img.shape, orig.shape)
+				img2 = imgs0[i]
+				if isinstance(img2, list):
+					img2 = imgs0[i][0]
 				# img2 = imgs0[i][-1]
 				row, col = np.unravel_index(i, (n_rows, n_cols))
 				ax = axs[row, col]
-				ax2 = axs[row+n_rows, col]
+				# ax2 = axs[row+n_rows, col]
 
-				ax.imshow(img)
-				ax2.imshow(img2, cmap=plt.cm.gray)
+				ax.imshow(orig)
+				# ax2.imshow(img2, cmap=plt.cm.gray)
 
-				vis_bbox(None, box, label, score=iou,
+				vis_bbox(None, boxes, label, score=iou,
 					label_names=label_names,
 					ax=ax,
 					alpha=0.7,
-					instance_colors=[(255,0,0)]
+					instance_colors=[(0,0,255)]
 				)
 				for lab, (y0, x0, y1, x1) in zip(gt, gt_boxes):
 					w, h = x1-x0, y1-y0
@@ -150,7 +160,7 @@ class Pipeline(object):
 						(x0, y0), w, h,
 						fill=False,
 						linewidth=2,
-						alpha=0.5,
+						alpha=0.7,
 						edgecolor="black" if lab != -1 else "gray"
 					))
 
@@ -161,7 +171,7 @@ class Pipeline(object):
 
 					for i, thresh in enumerate(threshs):
 						result = eval_detection_voc(
-							[box], [label], [score], [gt_boxes], [gt],
+							[boxes], [label], [score], [gt_boxes], [gt],
 							iou_thresh=thresh)
 
 						values[i] = result["map"]
@@ -175,6 +185,7 @@ class Pipeline(object):
 				out_dir = Path(self.opts.vis_output)
 				out_dir.mkdir(parents=True, exist_ok=True)
 				plt.savefig(out_dir / f"det{_:03d}.jpg", dpi=300)
+				plt.savefig(out_dir / f"det{_:03d}.svg", dpi=300)
 			else:
 				plt.show()
 
@@ -209,7 +220,7 @@ class Pipeline(object):
 			desc=f"Evaluating"))
 
 		in_values, out_values, rest_values = apply_to_iterator(
-			detector.predict, _it, n_input=1)
+			partial(detector.predict, preset="evaluate"), _it, n_input=1)
 
 		# delete unused iterators explicitly
 		del in_values
