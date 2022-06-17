@@ -30,3 +30,10 @@ class BaseModel(abc.ABC):
 
 	def preprocess(self, x, **kwargs):
 		return x
+
+	def use_preset(self, preset):
+		# if preset != "visualize":
+		# 	return super().use_preset(preset)
+
+		self.nms_thresh = 0.45
+		self.score_thresh = 0.1

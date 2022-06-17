@@ -22,7 +22,6 @@ class BBoxDataset(
 	# ImageNet mean (we need this if we use InceptionV3 ???)
 	mean = np.array((123, 117, 104), dtype=np.float32).reshape((-1, 1, 1))
 
-	area_threshold = 0# 2e-3
 
 	@classmethod
 	def kwargs(cls, opts):
@@ -38,6 +37,8 @@ class BBoxDataset(
 		self._setup_augmentations(opts)
 
 		self.return_scale = opts.model_type == "frcnn"
+		self.max_boxes = opts.max_boxes
+		self.area_threshold = opts.area_threshold
 
 	def get_im_obj(self, i):
 		return ds.AnnotationsReadMixin.get_example(self, i)
@@ -157,7 +158,8 @@ class BBoxDataset(
 
 		return img, bbox.astype(np.float32), lab
 
-	def pad_bbox(self, bbox, *, total_boxes=128, box_dtype=chainer.config.dtype, lab_dtype=np.int32):
+	def pad_bbox(self, bbox, *, total_boxes=None, box_dtype=chainer.config.dtype, lab_dtype=np.int32):
+		total_boxes = total_boxes or self.max_boxes
 		padded_bbox = np.full((total_boxes, 4), -1, dtype=box_dtype)
 		padded_labels = np.full(total_boxes, -1, dtype=lab_dtype)
 

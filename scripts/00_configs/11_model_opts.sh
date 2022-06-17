@@ -5,7 +5,7 @@ WEIGHTS=${WEIGHTS:-"imagenet"}
 MODEL_TYPE=${MODEL_TYPE:-chainercv.SSD300}
 
 case $MODEL_TYPE in
-	"chainercv.SSD300" )
+	"chainercv.SSD" | "chainercv.SSD300" | "chainercv.SSD512" )
 		if [[ ${BIG:-0} == 0 ]]; then
 			INPUT_SIZE=300
 		else

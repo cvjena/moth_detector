@@ -1,9 +1,17 @@
+import os
 import numpy as np
+import logging
 
-# from chainercv.links.model.ssd import SSD300 as SSD
-# from chainercv.links.model.ssd import VGG16Extractor300 as Extractor
-from chainercv.links.model.ssd import SSD512 as SSD
-from chainercv.links.model.ssd import VGG16Extractor512 as Extractor
+# kind of hacky, but should work
+if os.environ.get("BIG") == "1":
+	from chainercv.links.model.ssd import SSD512 as SSD
+	from chainercv.links.model.ssd import VGG16Extractor512 as Extractor
+else:
+	from chainercv.links.model.ssd import SSD300 as SSD
+	from chainercv.links.model.ssd import VGG16Extractor300 as Extractor
+
+#print(f"Using {SSD.__name__} as SSD-variant")
+
 
 from moth_detector.core.models.base import BaseModel
 

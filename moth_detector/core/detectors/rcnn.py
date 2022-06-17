@@ -71,7 +71,7 @@ class Detector(FRCNN_Detector, BaseDetector):
 			self.faster_rcnn.rpn(features, img_size, scales)
 
 		pred_bboxes, pred_labels, pred_scores = \
-			self._detection(features, rois, roi_indices)
+			self.decode_inner(features, rois, roi_indices)
 
 		self.report_mAP(pred_bboxes, pred_labels, pred_scores, bboxes, labels)
 
@@ -119,7 +119,7 @@ class Detector(FRCNN_Detector, BaseDetector):
 
 		return loss
 
-	def _detection(self, features, rois, roi_indices):
+	def decode_inner(self, features, rois, roi_indices):
 		rcnn = self.faster_rcnn
 
 		loc_norms = [rcnn.loc_normalize_mean, rcnn.loc_normalize_std]

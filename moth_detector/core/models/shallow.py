@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 import simplejson as json
 import typing as T
+import logging
 
 from collections import namedtuple
 from matplotlib import pyplot as plt
@@ -31,7 +32,7 @@ class BaseShallowModel(BaseModel):
 	RGB2GRAY = np.array([0.299, 0.587, 0.114]).reshape(-1, 1, 1)
 
 	def __init__(self, input_size, *args, **kwargs):
-		super().__init__(input_size=input_size)
+		super().__init__(*args, input_size=input_size, **kwargs)
 
 	def reinitialize_clf(self, n_classes, feat_size=None, initializer=None):
 		pass
@@ -145,6 +146,7 @@ class MCCModel(BaseShallowModel):
 		assert bg_img.exists(), \
 			f"Background image was not found: {bg_img}!"
 
+		logging.info(f"Using Background image from \"{bg_img}\"")
 		config["blobdetector"]["backgroundpath"] = str(bg_img)
 		self.bl_det = BlobDetectorFactory.get_blob_detector(detector_type, config)
 

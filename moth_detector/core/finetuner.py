@@ -30,14 +30,17 @@ def get_updater(opts):
 
 	return dict(updater_cls=cls, updater_kwargs=kwargs)
 
-def get_model_kwargs():
+def get_model_kwargs(model_type):
+
+	if model_type in ["shallow", "mcc"]:
+		return {}
 
 	return dict(
 		n_fg_class=1,
-		pretrained_model='imagenet'
+		pretrained_model='imagenet',
 	)
 
-def get_detector(model_type: str):
+def get_detector(opts):
 
 	_detectors = {
 		"chainercv.SSD300": detectors.SSD_Detector,
@@ -45,6 +48,7 @@ def get_detector(model_type: str):
 		"shallow": detectors.Shallow_Detector,
 		"mcc": detectors.Shallow_Detector,
 	}
+	model_type = opts.model_type
 
 	assert model_type in _detectors, \
 		f"Detector type not found: {model_type}"
@@ -53,9 +57,13 @@ def get_detector(model_type: str):
 
 	return dict(
 		classifier_cls=cls,
-		classifier_kwargs={},
+		classifier_kwargs=dict(
+			nms_thresh=opts.nms_threshold,
+			score_thresh=opts.score_threshold,
+			max_boxes=opts.max_boxes,
+		),
 
-		model_kwargs=get_model_kwargs(),
+		model_kwargs=get_model_kwargs(model_type),
 	)
 
 def get_model(model_type: str):
@@ -85,7 +93,7 @@ def new_finetuner(opts):
 		opts=opts,
 		experiment_name="Moth detector",
 		manual_gc=True,
-		**get_detector(opts.model_type),
+		**get_detector(opts),
 		**get_updater(opts),
 
 		dataset_cls=dataset.BBoxDataset,

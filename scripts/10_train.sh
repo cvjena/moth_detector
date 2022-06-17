@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+_home=${_home:-$(realpath $(dirname $0)/..)}
 
 source 00_common.sh
 

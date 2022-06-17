@@ -42,7 +42,7 @@ class DetectionTrainer(base.Trainer):
 		super(DetectionTrainer, self).__init__(opts=opts, intervals=intervals, *args, **kwargs)
 
 		# n_batches = int(np.ceil(len(it.dataset) // it.batch_size))
-		self.init_vis_report(trigger=(5, "epoch"))
+		# self.init_vis_report(trigger=(5, "epoch"))
 
 	def init_vis_report(self, trigger=(1, "epoch")):
 		target = self.evaluator.get_target("main")

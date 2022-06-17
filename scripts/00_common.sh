@@ -1,5 +1,4 @@
 
-_home=$(realpath $(dirname $0)/..)
 CONFIG_DIR=$(realpath ${_home:-..}/scripts/00_configs)
 export OMP_NUM_THREADS=${OMP_NUM_THREADS:-2}
 
@@ -11,6 +10,7 @@ OPTS="${OPTS} --gpu ${GPU}"
 
 LABEL_SHIFT=${LABEL_SHIFT:-0}
 OPTS="${OPTS} --label_shift ${LABEL_SHIFT}"
+OPTS="${OPTS} --no_snapshot"
 
 error=0
 

@@ -2,11 +2,11 @@ import chainer
 import logging
 import matplotlib.pyplot as plt
 import numpy as np
+import time
 
 from chainer.backends.cuda import to_cpu
 from chainer.dataset import convert
-from chainercv.evaluations import eval_detection_coco
-from chainercv.evaluations import eval_detection_voc
+from chainercv import evaluations as Eval
 from chainercv.utils import apply_to_iterator
 from chainercv.utils import bbox_iou
 from chainercv.visualizations import vis_bbox
@@ -82,7 +82,8 @@ class Pipeline(object):
 			trainer_cls=trainer.DetectionTrainer,
 		)
 
-	def detect(self, rnd=None):
+	def _get_data_detector(self):
+
 		data = dict(
 			train=self.tuner.train_data,
 			test=self.tuner.val_data,
@@ -91,14 +92,21 @@ class Pipeline(object):
 
 		profile_data(data)
 
-		device = convert._get_device(self.tuner.device)
 		detector = self.tuner.clf
 
-		if device.device.id >= 0:
+		device = convert._get_device(self.tuner.device)
+		if hasattr(device, "device") and device.device.id >= 0:
 			device.use()
 			detector.to_gpu(device.device.id)
 
-		detector.model.score_thresh = 0.5
+		return data, detector
+
+	def _predict(self, *args, preset=None):
+		return self.tuner.clf.predict(*args, preset=preset)
+
+	def detect(self, rnd=None):
+		data, detector = self._get_data_detector()
+
 		n_rows, n_cols = self.opts.rows, self.opts.cols
 
 		n_samples = len(data)
@@ -108,16 +116,28 @@ class Pipeline(object):
 			rnd.shuffle(idxs)
 
 		bar = tqdm(idxs, desc="Processing batches")
-		for _, n in enumerate(np.arange(n_samples, step=n_cols*n_rows), 1):
+
+		# we only have a single image, so display some more info
+		detail_view = n_rows == n_cols == 1
+
+		if detail_view:
+			grid = plt.GridSpec(1, 2)
+		else:
+			grid = plt.GridSpec(n_rows, n_cols)
+
+		for n in np.arange(n_samples, step=n_cols*n_rows):
 			cur_idxs = idxs[n : n+n_cols*n_rows]
 
-			fig, axs = plt.subplots(n_rows, n_cols, figsize=(16,9), squeeze=False)
-			[ax.axis("off") for ax in axs.ravel()]
-			# fig.suptitle("GT boxes: $blue$ | Predicted boxes: $black$")
+			fig = plt.figure(figsize=(16,9))
+			# fig, axs = plt.subplots(n_rows, n_cols, , squeeze=False)
+			# [ax.axis("off") for ax in axs.ravel()]
 
 			imgs, gt_bboxes, gt_labels = zip(*data[cur_idxs])
 			inputs = imgs, gt_bboxes, gt_labels
-			preds = pred_bboxes, pred_labels, pred_scores = detector.predict(list(imgs), preset="visualize")
+			t0 = time.time()
+			preds = pred_bboxes, pred_labels, pred_scores = self._predict(list(imgs))
+			t1 = time.time()
+			logging.info(f"Detection time: {t1-t0:.3f}s")
 			imgs0 = [detector.model.preprocess(im, return_all=True)
 				for im in imgs]
 
@@ -137,19 +157,19 @@ class Pipeline(object):
 				img = data.prepare_back(img)
 				gt_boxes = resize_bbox(gt_boxes, img.shape, orig.shape)
 				boxes = resize_bbox(boxes, img.shape, orig.shape)
+
 				img2 = imgs0[i]
 				if isinstance(img2, list):
 					img2 = imgs0[i][0]
-				# img2 = imgs0[i][-1]
+
 				row, col = np.unravel_index(i, (n_rows, n_cols))
-				ax = axs[row, col]
-				# ax2 = axs[row+n_rows, col]
-
+				ax = plt.subplot(grid[row, col])
+				ax.axis("off")
 				ax.imshow(orig)
-				# ax2.imshow(img2, cmap=plt.cm.gray)
 
-				vis_bbox(None, boxes, label, score=iou,
-					label_names=label_names,
+				vis_bbox(None, boxes, label,
+					# score=iou,
+					# label_names=label_names,
 					ax=ax,
 					alpha=0.7,
 					instance_colors=[(0,0,255)]
@@ -168,16 +188,35 @@ class Pipeline(object):
 				if self.opts.voc_thresh:
 					threshs = self.opts.voc_thresh
 					values = [0 for _ in range(len(threshs))]
+					# n_threshs = len(threshs)
+					# _rows = int(np.ceil(np.sqrt(n_threshs)))
+					# _cols = int(np.ceil(np.sqrt(n_threshs)))
+					# _f, _axs = plt.subplots(_rows, _cols, squeeze=False)
 
 					for i, thresh in enumerate(threshs):
-						result = eval_detection_voc(
+						precs, recs = Eval.calc_detection_voc_prec_rec(
 							[boxes], [label], [score], [gt_boxes], [gt],
 							iou_thresh=thresh)
+						ap = Eval.calc_detection_voc_ap(precs, recs)
+						values[i] = np.nanmean(ap)
 
-						values[i] = result["map"]
+						if not detail_view:
+							continue
 
-					title = " | ".join([f"mAP@{thresh}: {value:.2%}" for thresh, value in zip(threshs, values)])
-					ax.set_title(title)
+						_ax = plt.subplot(grid[0, 1])
+						_ax.scatter(recs[0], precs[0], alpha=0.7, marker="x")
+						_ax.plot(recs[0], precs[0],
+							label=f"mAP@{thresh:.2f} | AP: {np.nanmean(ap):.2f}")
+
+					if detail_view:
+						_ax = plt.subplot(grid[0, 1])
+						_ax.scatter([0,1], [0,1], c="white", alpha=0.01)
+						_ax.legend()
+						_ax.set_xlabel("Recall")
+						_ax.set_ylabel("Precision")
+
+					metrics = " | ".join([f"mAP@{thresh:.2f}: {value:.2%}" for thresh, value in zip(threshs, values)])
+					ax.set_title(f"{len(boxes)}/{(gt!=-1).sum()} Boxes predicted: {metrics}")
 				bar.update()
 
 			plt.tight_layout()
@@ -193,22 +232,7 @@ class Pipeline(object):
 
 
 	def evaluate(self, converter=convert.concat_examples):
-		data = dict(
-			train=self.tuner.train_data,
-			test=self.tuner.val_data,
-			val=self.tuner.val_data,
-		)[self.opts.subset]
-
-		profile_data(data)
-
-		device = convert._get_device(self.tuner.device)
-		detector = self.tuner.clf
-
-		if device.device.id >= 0:
-			device.use()
-			detector.to_gpu(device.device.id)
-		_converter = lambda batch: convert._call_converter(converter, batch, device=device)
-
+		data, model = self._get_data_detector()
 		iterator, n_batches = new_iterator(data,
 			n_jobs=self.opts.n_jobs,
 			batch_size=self.opts.batch_size,
@@ -219,9 +243,8 @@ class Pipeline(object):
 			total=n_batches, leave=False,
 			desc=f"Evaluating"))
 
-		in_values, out_values, rest_values = apply_to_iterator(
-			partial(detector.predict, preset="evaluate"),
-			_it, n_input=1)
+		in_values, out_values, rest_values = apply_to_iterator(self._predict, _it, n_input=1)
+
 		# delete unused iterators explicitly
 		del in_values
 		pred_bboxes, pred_labels, pred_scores = out_values
@@ -232,7 +255,7 @@ class Pipeline(object):
 			pred_bboxes, pred_labels, pred_scores, gt_bboxes, gt_labels))
 
 		if "coco" in self.opts.eval_methods:
-			result_coco = eval_detection_coco(
+			result_coco = Eval.eval_detection_coco(
 				pred_bboxes, pred_labels, pred_scores,
 				gt_bboxes, gt_labels)
 
@@ -251,7 +274,7 @@ class Pipeline(object):
 			values = np.zeros_like(threshs)
 
 			for i, thresh in enumerate(threshs):
-				result = eval_detection_voc(
+				result = Eval.eval_detection_voc(
 					pred_bboxes, pred_labels, pred_scores,
 					gt_bboxes, gt_labels,
 					iou_thresh=thresh)

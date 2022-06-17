@@ -9,25 +9,25 @@ from moth_detector.utils import _unpack
 class Detector(BaseDetector):
 	__name__ = "SSD Detector"
 
-	def __init__(self, model, *, loss_func, k=3, alpha=1):
-		super().__init__(model, loss_func=loss_func)
+	def __init__(self, model, *, loss_func, k=3, alpha=1, **kwargs):
+		super().__init__(model, loss_func=loss_func, **kwargs)
 
 		with self.init_scope():
 			self.add_persistent("k", k)
 			self.add_persistent("alpha", alpha)
 
 
-	def decode(self, loc, conf):
+	def decode_single(self, loc, conf):
 		return self.model.coder.decode(
 			_unpack(loc), _unpack(conf),
 			self.model.nms_thresh,
 			self.model.score_thresh)
 
-	def decode_all(self, locs, confs):
+	def decode_inner(self, locs, confs):
 		bboxes, labels, scores = [], [], []
 
 		for loc, conf in zip(_unpack(locs), _unpack(confs)):
-			bbox, label, score = self.decode(loc, conf)
+			bbox, label, score = self.decode_single(loc, conf)
 			bboxes.append(to_cpu(bbox))
 			labels.append(to_cpu(label))
 			scores.append(to_cpu(score))
@@ -69,9 +69,11 @@ class Detector(BaseDetector):
 			self.model.use_preset(preset)
 
 		with chainer.using_config("train", False), chainer.no_backprop_mode():
-			return self.decode_all(*self.model(X))
+			# FIY: 'self.decode_all' reduces the number of boxes according to the set
+			# 'score_thresh' and 'nms_thresh'
+			return self.decode(*self.model(X))
 
-	def __call__(self, *inputs):
+	def forward(self, *inputs):
 
 		X, boxes, y = inputs
 		mb_locs, mb_confs = self.model(X)
@@ -83,9 +85,10 @@ class Detector(BaseDetector):
 			mb_locs, mb_confs, gt_mb_locs, gt_mb_confs, self.k)
 		loss = loc_loss * self.alpha + conf_loss
 
-
+		# FIY: 'self.decode_all' reduces the number of boxes according to the set
+		# 'score_thresh' and 'nms_thresh'
 		pred_bboxes, pred_labels, pred_scores = \
-			self.decode_all(mb_locs, mb_confs)
+			self.decode(mb_locs, mb_confs)
 
 		self.report_mAP(pred_bboxes, pred_labels, pred_scores, boxes, y)
 
