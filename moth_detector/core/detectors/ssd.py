@@ -69,8 +69,8 @@ class Detector(BaseDetector):
 			self.model.use_preset(preset)
 
 		with chainer.using_config("train", False), chainer.no_backprop_mode():
-			# FIY: 'self.decode_all' reduces the number of boxes according to the set
-			# 'score_thresh' and 'nms_thresh'
+			# FIY: 'self.decode_all' reduces the number of boxes according
+			# to the selected 'score_thresh' and 'nms_thresh'
 			return self.decode(*self.model(X))
 
 	def forward(self, *inputs):
@@ -85,8 +85,8 @@ class Detector(BaseDetector):
 			mb_locs, mb_confs, gt_mb_locs, gt_mb_confs, self.k)
 		loss = loc_loss * self.alpha + conf_loss
 
-		# FIY: 'self.decode_all' reduces the number of boxes according to the set
-		# 'score_thresh' and 'nms_thresh'
+		# FIY: 'self.decode_all' reduces the number of boxes according
+		# to the selected 'score_thresh' and 'nms_thresh'
 		pred_bboxes, pred_labels, pred_scores = \
 			self.decode(mb_locs, mb_confs)
 

@@ -6,7 +6,6 @@ import time
 
 from chainer.backends.cuda import to_cpu
 from chainer.dataset import convert
-from chainercv import evaluations as Eval
 from chainercv.utils import apply_to_iterator
 from chainercv.utils import bbox_iou
 from chainercv.visualizations import vis_bbox
@@ -26,6 +25,7 @@ from cvdatasets.utils import pretty_print_dict
 
 from moth_detector.core import finetuner
 from moth_detector.core.training import trainer
+from moth_detector.core import evaluations as evals
 
 
 def profile_data(dataset):
@@ -194,10 +194,10 @@ class Pipeline(object):
 					# _f, _axs = plt.subplots(_rows, _cols, squeeze=False)
 
 					for i, thresh in enumerate(threshs):
-						precs, recs = Eval.calc_detection_voc_prec_rec(
+						precs, recs = evals.VOCEvaluations.prec_rec(
 							[boxes], [label], [score], [gt_boxes], [gt],
 							iou_thresh=thresh)
-						ap = Eval.calc_detection_voc_ap(precs, recs)
+						ap = evals.VOCEvaluations.avg_prec(precs, recs)
 						values[i] = np.nanmean(ap)
 
 						if not detail_view:
@@ -255,16 +255,11 @@ class Pipeline(object):
 			pred_bboxes, pred_labels, pred_scores, gt_bboxes, gt_labels))
 
 		if "coco" in self.opts.eval_methods:
-			result_coco = Eval.eval_detection_coco(
+
+			results = evals.COCOEvaluations.evaluate(
 				pred_bboxes, pred_labels, pred_scores,
 				gt_bboxes, gt_labels)
-
-			rows = []
-			for key in sorted(result_coco.keys()):
-				if key in ["coco_eval", "existent_labels"]:
-					continue
-				value = result_coco[key]
-				rows.append((key.replace("/", ", "), f"{float(value):.2%}"))
+			rows = list(sorted(results.items(), key=lambda item: item[0]))
 
 			print("COCO evaluation:")
 			print(tabulate(rows, headers=("Metric", "Score"), tablefmt="fancy_grid"))
@@ -274,12 +269,10 @@ class Pipeline(object):
 			values = np.zeros_like(threshs)
 
 			for i, thresh in enumerate(threshs):
-				result = Eval.eval_detection_voc(
+				values[i] = evals.VOCEvaluations.evaluate(
 					pred_bboxes, pred_labels, pred_scores,
 					gt_bboxes, gt_labels,
 					iou_thresh=thresh)
-
-				values[i] = result["map"]
 
 			print("VOC evaluation:")
 			rows = [(f"mAP@{int(thresh * 100):d}", f"{value:.2%}") for thresh, value in zip(threshs, values)]
