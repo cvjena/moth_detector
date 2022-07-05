@@ -84,7 +84,7 @@ def new_finetuner(opts):
 
 	mpi = opts.mode == "train" and opts.mpi
 
-	tuner_factory = ft.FinetunerFactory.new(
+	tuner_factory = ft.FinetunerFactory(
 		mpi=mpi,
 		default=DefaultFinetuner,
 		mpi_tuner=MPIFinetuner)

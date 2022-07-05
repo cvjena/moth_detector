@@ -4,7 +4,6 @@
 *.pdf
 *.npz
 
-.results*
 
 log
 *.png
@@ -28,7 +27,6 @@ profile
 hosts.conf
 
 .results
-.results/*
 # mprof output files
 *.dat
 scripts/*.txt
