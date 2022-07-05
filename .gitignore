@@ -31,3 +31,4 @@ hosts.conf
 .results/*
 # mprof output files
 *.dat
+scripts/*.txt
