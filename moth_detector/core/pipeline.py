@@ -142,9 +142,10 @@ class Pipeline(object):
 				for im in imgs]
 
 			for i, (img, gt_boxes, gt, boxes, label, score) in enumerate(zip(*inputs, *preds)):
+			for i, (img, gt_boxes, gt_label, boxes, label, score) in enumerate(zip(*inputs, *preds)):
 				if boxes.ndim != 2:
 					boxes = np.array([[0,0,1,1]], dtype=gt_boxes.dtype)
-					label = np.array([0], dtype=gt.dtype)
+					label = np.array([0], dtype=gt_label.dtype)
 					score = np.array([0.01], dtype=np.float32)
 
 				iou = bbox_iou(gt_boxes, boxes).max(axis=0)
@@ -174,7 +175,7 @@ class Pipeline(object):
 					alpha=0.7,
 					instance_colors=[(0,0,255)]
 				)
-				for lab, (y0, x0, y1, x1) in zip(gt, gt_boxes):
+				for lab, (y0, x0, y1, x1) in zip(gt_label, gt_boxes):
 					w, h = x1-x0, y1-y0
 					ax.add_patch(Rectangle(
 						(x0, y0), w, h,
@@ -194,9 +195,9 @@ class Pipeline(object):
 					# _f, _axs = plt.subplots(_rows, _cols, squeeze=False)
 
 					for i, thresh in enumerate(threshs):
-						precs, recs = evals.VOCEvaluations.prec_rec(
-							[boxes], [label], [score], [gt_boxes], [gt],
-							iou_thresh=thresh)
+						pred = evals.Records([boxes], [label], [score])
+						gt = evals.Records([gt_boxes], [gt_label])
+						precs, recs = evals.VOCEvaluations.prec_rec(pred, gt, iou_thresh=thresh)
 						ap = evals.VOCEvaluations.avg_prec(precs, recs)
 						values[i] = np.nanmean(ap)
 
@@ -216,7 +217,7 @@ class Pipeline(object):
 						_ax.set_ylabel("Precision")
 
 					metrics = " | ".join([f"mAP@{thresh:.2f}: {value:.2%}" for thresh, value in zip(threshs, values)])
-					ax.set_title(f"{len(boxes)}/{(gt!=-1).sum()} Boxes predicted: {metrics}")
+					ax.set_title(f"{len(boxes)}/{(gt_label!=-1).sum()} Boxes predicted: {metrics}")
 				bar.update()
 
 			plt.tight_layout()
@@ -247,18 +248,16 @@ class Pipeline(object):
 
 		# delete unused iterators explicitly
 		del in_values
-		pred_bboxes, pred_labels, pred_scores = out_values
-		gt_bboxes, gt_labels = rest_values
 
 		# unpack the generators
 		pred_bboxes, pred_labels, pred_scores, gt_bboxes, gt_labels = zip(*zip(
-			pred_bboxes, pred_labels, pred_scores, gt_bboxes, gt_labels))
+			*out_values, *rest_values))
 
+		pred = evals.Records(pred_bboxes, pred_labels, pred_scores)
+		gt = evals.Records(gt_bboxes, gt_labels)
 		if "coco" in self.opts.eval_methods:
 
-			results = evals.COCOEvaluations.evaluate(
-				pred_bboxes, pred_labels, pred_scores,
-				gt_bboxes, gt_labels)
+			results = evals.COCOEvaluations.evaluate(pred, gt)
 			rows = list(sorted(results.items(), key=lambda item: item[0]))
 
 			print("COCO evaluation:")
@@ -269,10 +268,7 @@ class Pipeline(object):
 			values = np.zeros_like(threshs)
 
 			for i, thresh in enumerate(threshs):
-				values[i] = evals.VOCEvaluations.evaluate(
-					pred_bboxes, pred_labels, pred_scores,
-					gt_bboxes, gt_labels,
-					iou_thresh=thresh)
+				values[i] = evals.VOCEvaluations.evaluate(pred, gt, iou_thresh=thresh)
 
 			print("VOC evaluation:")
 			rows = [(f"mAP@{int(thresh * 100):d}", f"{value:.2%}") for thresh, value in zip(threshs, values)]
