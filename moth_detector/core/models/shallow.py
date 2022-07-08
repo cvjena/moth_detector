@@ -4,19 +4,19 @@ import simplejson as json
 import typing as T
 import logging
 
-from collections import namedtuple
-from matplotlib import pyplot as plt
 from skimage import filters
 
 from idac.blobdet.blob_detector_factory import BlobDetectorFactory
 
 from blob_detector import utils
+from blob_detector.core.bbox import BBox
 from blob_detector.core.bbox_proc import Splitter
 from blob_detector.core.binarizers import BinarizerType
 from blob_detector.core.pipeline import Pipeline
 
 from moth_detector.core.dataset.bbox_dataset import BBoxDataset
 from moth_detector.core.models.base import BaseModel
+
 
 class BaseShallowModel(BaseModel):
 
@@ -47,15 +47,22 @@ class BaseShallowModel(BaseModel):
 		im = (im * BaseShallowModel.RGB2GRAY).sum(axis=0).astype(np.uint8)
 		return im
 
-	def convert_boxes(self, bboxes):
+	def convert_boxes(self, bboxes: T.List[BBox], labels = None, scores = None):
 
 		result = [[], [], []]
 
-		for (x0, y0), (x1, y1) in bboxes:
+		if labels is None:
+			labels = np.full(len(bboxes), 0, dtype=np.float32)
 
-			result[0].append([y0, x0, y1, x1]) # bbox
-			result[1].append(0) # label
-			result[2].append(1.0) # score
+		if scores is None:
+			scores = np.full(len(bboxes), -1, dtype=np.float32)
+
+		for (bbox, label, score) in zip(bboxes, labels, scores):
+
+			(x0, y0, x1, y1) = bbox
+			result[0].append([y0, x0, y1, x1])
+			result[1].append(label)
+			result[2].append(score)
 
 		return list(map(np.array, result))
 
@@ -91,10 +98,7 @@ class Model(BaseShallowModel):
 		super().__init__(*args, **kwargs)
 
 
-		self._splitter = Splitter(preproc=Pipeline(), detector=Pipeline())
-
 		self.img_proc = Pipeline()
-		self.img_proc.add_operation(self._splitter.set_image)
 		self.img_proc.preprocess(equalize=equalize, sigma=sigma)
 		self.img_proc.binarize(type=thresholding,
 			block_size_scale=block_size_scale,
@@ -108,21 +112,40 @@ class Model(BaseShallowModel):
 
 		self.bbox_proc = Pipeline()
 		self.bbox_proc.detect()
-		self.bbox_proc.add_operation(self._splitter.split)
-		self.bbox_proc.bbox_filter(enlarge=enlarge)
+		_, splitter = self.bbox_proc.split_bboxes(preproc=Pipeline(), detector=Pipeline())
+		_, bbox_filter = self.bbox_proc.bbox_filter(
+			score_threshold=0.5,
+			nms_threshold=0.3,
+			enlarge=enlarge,
+		)
+		_, scorer = self.bbox_proc.score()
 
-
-	def preprocess(self, x, **kwargs):
-		im = super().preprocess(x, **kwargs)
-		# h, w = im.shape
-
-		return self.img_proc(im, **kwargs)
+		self.img_proc.requires_input(splitter.set_image)
+		self.img_proc.requires_input(bbox_filter.set_image)
+		self.img_proc.requires_input(scorer.set_image)
 
 	def __call__(self, x):
-		im0 = self.preprocess(x)
-		bboxes, inds, _ = self.bbox_proc(im0)
+		im = self.preprocess(x)
+		ims = self.img_proc(im, return_all=True)
 
-		return self.convert_boxes([bboxes[i] for i in inds])
+
+		# from matplotlib import pyplot as plt
+		# rows = int(np.ceil(np.sqrt(len(ims))))
+		# cols = int(np.ceil(len(ims) / rows))
+		# fig, axs = plt.subplots(rows, cols, squeeze=False)
+
+		# for i, im in enumerate(ims):
+		# 	ax = axs[np.unravel_index(i, axs.shape)]
+		# 	ax.imshow(im)
+
+		# plt.show()
+		# plt.close()
+
+		im0 = ims[-1]
+		bboxes, labels, scores = self.bbox_proc(im0)
+		h, w, *_ = im0.shape
+		bboxes = [bbox * (w, h) for bbox in bboxes]
+		return self.convert_boxes(bboxes, labels, scores)
 
 class MCCModel(BaseShallowModel):
 
