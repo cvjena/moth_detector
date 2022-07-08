@@ -128,9 +128,6 @@ class Pipeline(object):
 		for n in np.arange(n_samples, step=n_cols*n_rows):
 			cur_idxs = idxs[n : n+n_cols*n_rows]
 
-			fig = plt.figure(figsize=(16,9))
-			# fig, axs = plt.subplots(n_rows, n_cols, , squeeze=False)
-			# [ax.axis("off") for ax in axs.ravel()]
 
 			imgs, gt_bboxes, gt_labels = zip(*data[cur_idxs])
 			inputs = imgs, gt_bboxes, gt_labels
@@ -141,7 +138,7 @@ class Pipeline(object):
 			imgs0 = [detector.model.preprocess(im, return_all=True)
 				for im in imgs]
 
-			for i, (img, gt_boxes, gt, boxes, label, score) in enumerate(zip(*inputs, *preds)):
+			fig = plt.figure(figsize=(16,9))
 			for i, (img, gt_boxes, gt_label, boxes, label, score) in enumerate(zip(*inputs, *preds)):
 				if boxes.ndim != 2:
 					boxes = np.array([[0,0,1,1]], dtype=gt_boxes.dtype)
