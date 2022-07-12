@@ -141,7 +141,7 @@ class Model(BaseShallowModel):
 		# plt.show()
 		# plt.close()
 
-		im0 = ims[-1]
+		im0 = ims[-1].im
 		bboxes, labels, scores = self.bbox_proc(im0)
 		h, w, *_ = im0.shape
 		bboxes = [bbox * (w, h) for bbox in bboxes]
