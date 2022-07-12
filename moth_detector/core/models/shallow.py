@@ -93,12 +93,13 @@ class Model(BaseShallowModel):
 				 dilate_iterations: int = 3,
 
 				 # bbox postprocess
-				 enlarge: float = -0.01,
+				 enlarge: float = 0.01,
 				 **kwargs):
 		super().__init__(*args, **kwargs)
 
 
 		self.img_proc = Pipeline()
+		self.img_proc.find_border()
 		self.img_proc.preprocess(equalize=equalize, sigma=sigma)
 		self.img_proc.binarize(type=thresholding,
 			block_size_scale=block_size_scale,
@@ -126,22 +127,27 @@ class Model(BaseShallowModel):
 
 	def __call__(self, x):
 		im = self.preprocess(x)
-		ims = self.img_proc(im, return_all=True)
+		res = self.img_proc(im)
 
+		ims = []
+		current = res
+		while current is not None:
+			ims.append(current)
+			current = current.parent
 
 		# from matplotlib import pyplot as plt
 		# rows = int(np.ceil(np.sqrt(len(ims))))
 		# cols = int(np.ceil(len(ims) / rows))
 		# fig, axs = plt.subplots(rows, cols, squeeze=False)
 
-		# for i, im in enumerate(ims):
+		# for i, im in enumerate(reversed(ims)):
 		# 	ax = axs[np.unravel_index(i, axs.shape)]
-		# 	ax.imshow(im)
+		# 	im.show(ax, masked=True)
 
 		# plt.show()
 		# plt.close()
 
-		im0 = ims[-1].im
+		im0 = res.im
 		bboxes, labels, scores = self.bbox_proc(im0)
 		h, w, *_ = im0.shape
 		bboxes = [bbox * (w, h) for bbox in bboxes]
