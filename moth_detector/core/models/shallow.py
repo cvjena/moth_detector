@@ -73,24 +73,27 @@ class Model(BaseShallowModel):
 
 				 # preprocessing
 				 equalize: bool = False,
-				 sigma: float = -5.0,
+				 sigma: float = 5.0,
 
 				 # binarization
-				 thresholding: BinarizerType = BinarizerType.high_pass,
-				 # binarization: Gauss-local binarization
-				 block_size_scale: float = 0.2,
-				 pad: bool = False,
-				 # binarization: High-pass based
-				 window_size: int = 30,
-				 bin_sigma: float = 5.0,
-				 # binarization: OTSU
+				 thresholding: BinarizerType = BinarizerType.gauss_local,
+
+				 # binarization: base options
+				 use_masked: bool = True,
 				 use_cv2: bool = False,
+
+				 # binarization: base local-based options
+				 window_size: int = 31,
+				 offset: float = 2.0,
+
+				 # binarization: High-pass based
+				 bin_sigma: float = 5.0,
 
 				 remove_border: bool = True,
 
 				 # postprocess
 				 kernel_size: int = 5,
-				 dilate_iterations: int = 3,
+				 dilate_iterations: int = 2,
 
 				 # bbox postprocess
 				 enlarge: float = 0.01,
@@ -102,14 +105,15 @@ class Model(BaseShallowModel):
 		self.img_proc.find_border()
 		self.img_proc.preprocess(equalize=equalize, sigma=sigma)
 		self.img_proc.binarize(type=thresholding,
-			block_size_scale=block_size_scale,
-			do_padding=pad,
+			use_masked=use_masked,
 			use_cv2=use_cv2,
 			sigma=bin_sigma,
-			window_size=window_size)
+			window_size=window_size,
+			offset=offset,
+		)
 		if remove_border:
 			self.img_proc.remove_border()
-		self.img_proc.open_close(kernel_size=kernel_size, iterations=dilate_iterations)
+		# self.img_proc.open_close(kernel_size=kernel_size, iterations=dilate_iterations)
 
 		self.bbox_proc = Pipeline()
 		self.bbox_proc.detect()
@@ -135,17 +139,20 @@ class Model(BaseShallowModel):
 			ims.append(current)
 			current = current.parent
 
-		# from matplotlib import pyplot as plt
-		# rows = int(np.ceil(np.sqrt(len(ims))))
-		# cols = int(np.ceil(len(ims) / rows))
-		# fig, axs = plt.subplots(rows, cols, squeeze=False)
+		VIS = False
 
-		# for i, im in enumerate(reversed(ims)):
-		# 	ax = axs[np.unravel_index(i, axs.shape)]
-		# 	im.show(ax, masked=True)
+		if VIS:
+			from matplotlib import pyplot as plt
+			rows = int(np.ceil(np.sqrt(len(ims))))
+			cols = int(np.ceil(len(ims) / rows))
+			fig, axs = plt.subplots(rows, cols, squeeze=False)
 
-		# plt.show()
-		# plt.close()
+			for i, im in enumerate(reversed(ims)):
+				ax = axs[np.unravel_index(i, axs.shape)]
+				im.show(ax, masked=False)
+
+			plt.show()
+			plt.close()
 
 		im0 = res.im
 		bboxes, labels, scores = self.bbox_proc(im0)
