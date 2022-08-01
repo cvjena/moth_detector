@@ -2,6 +2,7 @@ cvargparse~=0.3
 cvdatasets~=0.8
 cvfinetune>=0.5,<0.5.6
 chainer-addons>=0.8,<0.9.2
+ammod-blob-detector~=0.2
 
 chainer~=6.7
 chainercv~=0.13

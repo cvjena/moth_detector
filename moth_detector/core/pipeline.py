@@ -63,6 +63,8 @@ class Pipeline(object):
 		else:
 			raise NotImplementedError(f"this mode is not implemented: {self.opts.mode}")
 
+		logging.info("Ready")
+
 	def __init__(self, opts):
 		super(Pipeline, self).__init__()
 

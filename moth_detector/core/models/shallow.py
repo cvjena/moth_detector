@@ -80,7 +80,7 @@ class Model(BaseShallowModel):
 
 				 # binarization: base options
 				 use_masked: bool = True,
-				 use_cv2: bool = False,
+				 use_cv2: bool = True,
 
 				 # binarization: base local-based options
 				 window_size: int = 31,
@@ -100,6 +100,8 @@ class Model(BaseShallowModel):
 				 **kwargs):
 		super().__init__(*args, **kwargs)
 
+		BBox.MIN_AREA = 4e-4
+
 
 		self.img_proc = Pipeline()
 		self.img_proc.find_border()
@@ -113,11 +115,17 @@ class Model(BaseShallowModel):
 		)
 		if remove_border:
 			self.img_proc.remove_border()
-		# self.img_proc.open_close(kernel_size=kernel_size, iterations=dilate_iterations)
+		self.img_proc.open_close(
+			kernel_size=kernel_size,
+			iterations=dilate_iterations)
 
 		self.bbox_proc = Pipeline()
-		self.bbox_proc.detect()
-		_, splitter = self.bbox_proc.split_bboxes(preproc=Pipeline(), detector=Pipeline())
+
+		self.bbox_proc.detect(use_masked=True)
+
+		_, splitter = self.bbox_proc.split_bboxes(
+			preproc=Pipeline(), detector=Pipeline())
+
 		_, bbox_filter = self.bbox_proc.bbox_filter(
 			score_threshold=0.5,
 			nms_threshold=0.3,
@@ -149,16 +157,16 @@ class Model(BaseShallowModel):
 
 			for i, im in enumerate(reversed(ims)):
 				ax = axs[np.unravel_index(i, axs.shape)]
-				im.show(ax, masked=False)
+				im.show(ax, masked=True)
 
 			plt.show()
 			plt.close()
 
-		im0 = res.im
-		bboxes, labels, scores = self.bbox_proc(im0)
-		h, w, *_ = im0.shape
-		bboxes = [bbox * (w, h) for bbox in bboxes]
-		return self.convert_boxes(bboxes, labels, scores)
+		det = self.bbox_proc(res)
+		h, w, *_ = im.shape
+		bboxes = [bbox * (w, h) for bbox in det.bboxes if bbox.is_valid]
+		scores = [bbox.score for bbox in det.bboxes if bbox.is_valid]
+		return self.convert_boxes(bboxes, scores=scores)
 
 class MCCModel(BaseShallowModel):
 
