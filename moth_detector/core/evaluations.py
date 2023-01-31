@@ -2,6 +2,7 @@ import numpy as np
 import typing as T
 
 from chainercv import evaluations as Eval
+from chainercv.utils.bbox.bbox_iou import bbox_iou
 
 class Records(T.NamedTuple):
 	bboxes: T.List[np.ndarray]
@@ -13,6 +14,39 @@ class _Static:
 	def __new__(cls):
 		raise TypeError("Static class only!")
 
+class APEvaluations(_Static):
+	@classmethod
+	def evaluate(cls, pred: Records, gt: Records, *, iou_thresh: float = 0.5, **kwargs):
+		res = []
+		for entries in zip(*pred, *gt[:-1]):
+			pred_bboxes, pred_labels, pred_scores, gt_bboxes, gt_labels = entries
+			mask = gt_labels != -1
+			gt_bboxes = gt_bboxes[mask]
+			gt_labels = gt_labels[mask]
+
+			selec = np.zeros(gt_bboxes.shape[0], dtype=bool)
+			iou = bbox_iou(pred_bboxes, gt_bboxes)
+			gt_index = iou.argmax(axis=1)
+			# set -1 if there is no matching ground truth
+			gt_index[iou.max(axis=1) < iou_thresh] = -1
+			matched = []
+
+			for idx in gt_index:
+				if idx == -1:
+					matched.append(0)
+					continue
+
+				if selec[idx]:
+					matched.append(0)
+					continue
+
+				matched.append(1)
+				selec[idx] = True
+
+			#res.append(np.mean(matched))
+			res.append(np.mean(selec))
+
+		return np.array(res)
 
 class VOCEvaluations(_Static):
 

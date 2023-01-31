@@ -67,7 +67,9 @@ def add_evaluation_args(subp, _common_parser):
 		Arg("--subset", choices=["train", "val"], default="val",
 			help="The subset to evaluate"),
 
-		Arg("--eval_methods", nargs="+", choices=["coco", "voc"], default=["coco", "voc"],
+		Arg("--eval_methods", nargs="+",
+			choices=["coco", "voc", "ap"],
+			default=["ap"],
 			help="Evaluation method"),
 
 		Arg("--plot_voc", action="store_true",

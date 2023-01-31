@@ -71,6 +71,8 @@ class Model(BaseShallowModel):
 
 	def __init__(self, *args,
 
+				 # min_size: int = 1080,
+
 				 # preprocessing
 				 equalize: bool = False,
 				 sigma: float = 5.0,
@@ -105,6 +107,10 @@ class Model(BaseShallowModel):
 
 		self.img_proc = Pipeline()
 		self.img_proc.find_border()
+
+		# if min_size > 0:
+		# 	self.img_proc.rescale(min_size=min_size, min_scale=0.1)
+
 		self.img_proc.preprocess(equalize=equalize, sigma=sigma)
 		self.img_proc.binarize(type=thresholding,
 			use_masked=use_masked,

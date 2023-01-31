@@ -254,6 +254,12 @@ class Pipeline(object):
 
 		pred = evals.Records(pred_bboxes, pred_labels, pred_scores)
 		gt = evals.Records(gt_bboxes, gt_labels)
+
+		if "ap" in self.opts.eval_methods:
+			results = evals.APEvaluations.evaluate(pred, gt)
+			mu, std = np.mean(results), np.std(results)
+			print(f"AP evaluation: {mu:.4%} +/- {std:.4%}")
+
 		if "coco" in self.opts.eval_methods:
 
 			results = evals.COCOEvaluations.evaluate(pred, gt)
