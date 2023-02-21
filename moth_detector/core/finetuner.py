@@ -19,7 +19,7 @@ from moth_detector.core import dataset
 from moth_detector.core import detectors
 from moth_detector.core import models
 
-def get_updater(opts):
+def updater_kwargs(opts):
 	if opts.mode == "train" and opts.update_size > opts.batch_size:
 		cls = MiniBatchUpdater
 		kwargs = dict(update_size=opts.update_size)
@@ -30,7 +30,7 @@ def get_updater(opts):
 
 	return dict(updater_cls=cls, updater_kwargs=kwargs)
 
-def get_model_kwargs(model_type):
+def model_kwargs(model_type):
 
 	if model_type in ["shallow", "mcc"]:
 		return {}
@@ -40,7 +40,14 @@ def get_model_kwargs(model_type):
 		pretrained_model='imagenet',
 	)
 
-def get_detector(opts):
+def dataset_kwargs(opts):
+	return dict(
+		dataset_cls=dataset.BBoxDataset,
+		dataset_kwargs_factory=dataset.BBoxDataset.kwargs(opts),
+	)
+
+
+def detector_kwargs(opts):
 
 	_detectors = {
 		"chainercv.SSD300": detectors.SSD_Detector,
@@ -63,7 +70,7 @@ def get_detector(opts):
 			max_boxes=opts.max_boxes,
 		),
 
-		model_kwargs=get_model_kwargs(model_type),
+		model_kwargs=model_kwargs(model_type),
 	)
 
 def get_model(model_type: str):
@@ -93,12 +100,9 @@ def new_finetuner(opts):
 		opts=opts,
 		experiment_name="Moth detector",
 		manual_gc=True,
-		**get_detector(opts),
-		**get_updater(opts),
-
-		dataset_cls=dataset.BBoxDataset,
-		dataset_kwargs_factory=dataset.BBoxDataset.kwargs(opts),
-
+		**detector_kwargs(opts),
+		**updater_kwargs(opts),
+		**dataset_kwargs(opts),
 	)
 
 	return tuner, tuner_factory.get("comm")
