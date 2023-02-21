@@ -6,9 +6,9 @@ if [[ -z ${_home} ]]; then
 	error=1
 fi
 
-export DATA=${DATA:-$(realpath ${_home}/../../dataset_info.yml)}
+export DATA=${DATA:-$(realpath ${_home}/../../dataset_info.moths.yml)}
 
-DATASET=${DATASET:-AMMOD_MOTHS}
+DATASET=${DATASET:-JENA_MOTHS}
 
 OPTS="${OPTS} --prepare_type ${PREPARE_TYPE}"
 OPTS="${OPTS} --n_jobs ${N_JOBS}"
