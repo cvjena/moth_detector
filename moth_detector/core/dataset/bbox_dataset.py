@@ -1,5 +1,6 @@
 import chainer
 import copy
+import logging
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -39,6 +40,17 @@ class BBoxDataset(
 		self.return_scale = opts.model_type == "frcnn"
 		self.max_boxes = opts.max_boxes
 		self.area_threshold = opts.area_threshold
+
+		if len(self.uuids) == 0:
+			return
+
+		counts = []
+		for uuid in self.uuids:
+			objects = self._annot.multi_boxes[uuid]["objects"]
+			counts.append(len(objects))
+
+		n, avg, std = sum(counts), np.mean(counts), np.std(counts)
+		logging.info(f"Loaded {n} bounding boxes ({avg:.2f} +/- {std:.2f} | {min(counts)} - {max(counts)} per image )")
 
 	def get_im_obj(self, i):
 		return ds.AnnotationsReadMixin.get_example(self, i)
