@@ -52,9 +52,10 @@ class BaseDetector(classifiers.Classifier):
 		_bboxes = [ to_cpu(box) for box in gt_bboxes]
 		_labels = [ to_cpu(_y) for _y in gt_labels]
 
+		pred = evals.Records(pred_bboxes, pred_labels, pred_scores)
+		gt = evals.Records(_bboxes, _labels)
 		for thresh in thresholds:
 			result = evals.VOCEvaluations.evaluate(
-				pred_bboxes, pred_labels, pred_scores,
-				_bboxes, _labels, iou_thresh=thresh)
+				pred, gt, iou_thresh=thresh)
 
 			self.report(**{f"map@{int(thresh*100)}": result})
