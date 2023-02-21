@@ -8,4 +8,20 @@ __all__ = [
 	"FRCNN_Model",
 	"Shallow_Model",
 	"MCCModel",
+	"get",
 ]
+
+
+def get(model_type: str):
+
+	_models = {
+		"chainercv.SSD300": SSD_Model,
+		"chainercv.FasterRCNNVGG16": FRCNN_Model,
+		"shallow": Shallow_Model,
+		"mcc": MCCModel,
+	}
+
+	assert model_type in _models, \
+		f"Model type not found: {model_type}"
+
+	return _models.get(model_type)
