@@ -14,9 +14,7 @@ OPTS="${OPTS} --no_snapshot"
 
 error=0
 
-cd $CONFIG_DIR
-
-source 00_config.sh
+source ${CONFIG_DIR}/00_config.sh
 
 source ${MODEL_OPTS}
 source ${DATASET_OPTS}
