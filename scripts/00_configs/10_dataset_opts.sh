@@ -6,7 +6,7 @@ if [[ -z ${_home} ]]; then
 	error=1
 fi
 
-export DATA=${DATA:-$(realpath ${_home}/../../dataset_info.moths.yml)}
+export DATA=${DATA:-$(realpath ${_home}/configs/dataset_info.moths.yml)}
 
 DATASET=${DATASET:-JENA_MOTHS}
 

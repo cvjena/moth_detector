@@ -1,0 +1,246 @@
+# BASE_DIR: /home/korsch_data/
+BASE_DIR: /data/korsch/
+
+DATA_DIR: datasets
+MODEL_DIR: models
+
+MODELS:
+  # Classification
+  cvmodelz.InceptionV3:     &inception
+    folder: inception
+    weights:
+      inat: model.inat.ckpt.npz
+      imagenet: model.imagenet.ckpt.npz
+
+  cvmodelz.ResNet50:     &resnet50
+    folder: resnet
+    weights:
+      imagenet: model.npz
+
+  cvmodelz.VGG19:     &vgg19
+    folder: vgg19
+    weights:
+      imagenet: model.npz
+
+  # Detector
+
+  # Single-shot detection
+  chainercv.SSD300:       &ssd
+    folder: ssd/vgg16_extractor
+    class_key: ssd
+    weights: 
+      imagenet: model.imagenet.npz
+
+  # Faster R-CNN
+  frcnn:       &frcnn50
+    folder: frcnn/vgg16_extractor
+    class_key: frcnn
+    weights: 
+      imagenet: model.imagenet.npz
+
+DATASETS:
+
+  _base_moths:    &base_moths
+    annotation_type: FILE_LIST
+    n_classes: 200
+
+  _base_moths_subset: &base_moths_subset
+    <<: *base_moths
+    n_classes: 100
+
+  JENA_MOTHS:
+    <<: *base_moths
+    folder: moths/jena_moths/2022-01/uncropped
+    n_classes: 176
+    annotations: ORIGINAL
+
+  JENA_MOTHS_CROPPED: &jena_cropped
+    <<: *base_moths
+    folder: moths/jena_moths/2022-04/cropped
+    n_classes: 173
+    annotations: ORIGINAL
+
+  JENA_MOTHS_CROPPED_HC:
+    <<: *jena_cropped
+    folder: moths/jena_moths/2023-01/cropped
+
+  JENA_MOTHS_CROPPED_COMM:
+    <<: *base_moths
+    folder: moths/jena_moths/2022-04/cropped.common
+    n_classes: 69
+    annotations: ORIGINAL
+
+  JENA_MOTHS_CROPPED_AUG: &jena_cropped_aug
+    <<: *base_moths
+    folder: moths/jena_moths/2022-08/cropped_augmented
+    n_classes: 4626
+    annotations: ORIGINAL
+
+  JENA_MOTHS_CROPPED_AUG_HC:
+    <<: *jena_cropped_aug
+    folder: moths/jena_moths/2023-01/cropped_augmented
+
+  JENA_MOTHS_CROPPED_AUG_EU:
+    <<: *base_moths
+    folder: moths/jena_moths/2022-08/cropped_augmented_eu_moths
+    n_classes: 326
+    annotations: ORIGINAL
+
+  JENA_MOTHS_CROPPED_AUG_MED:
+    <<: *base_moths
+    folder: moths/jena_moths/2022-08/cropped_augmented_med
+    n_classes: 2331
+    annotations: ORIGINAL
+
+  MCC:
+    <<: *base_moths
+    folder: moths/MCC/8classes
+    # Dataset from https://github.com/kimbjerge/MCC-trap
+    annotations: ORIGINAL
+    n_classes: 8
+
+  MCC_AUG:
+    <<: *base_moths
+    folder: moths/MCC/augmented
+    n_classes: 4626
+    annotations: ORIGINAL
+
+  MCC_AUG_SM:
+    <<: *base_moths
+    folder: moths/MCC/augmented_sm
+    n_classes: 328
+    annotations: ORIGINAL
+
+  MCC_AUG_MED:
+    <<: *base_moths
+    folder: moths/MCC/
+    n_classes: 2331
+    annotations: augmented_med
+
+  LEPI_MOTHS:
+    <<: *base_moths
+    folder: moths
+    annotations: lepi_cleaned
+
+  EU_MOTHS:
+    <<: *base_moths
+    folder: moths/eu_moths/uncropped/
+    # Nachtfalter EU-Moths
+    annotations: ORIGINAL
+
+  EU_MOTHS_CROPPED:  &moths_cropped
+    <<: *base_moths
+    folder: moths/eu_moths/cropped/
+    # Nachtfalter EU-Moths (cropped)
+    annotations: ORIGINAL
+
+  EU_MOTHS_CROPPED_AUG_MED:  &moths_cropped_aug_med
+    <<: *base_moths
+    folder: moths/eu_moths/
+    n_classes: 2331
+    # Nachtfalter EU-Moths (cropped) + GBIF + Jena-Moths
+    annotations: cropped_augmented_med
+
+  EU_MOTHS_CROPPED_LEPI_VAL:  &moths_cropped_lepi_val
+    <<: *base_moths
+    folder: moths
+    # Nachtfalter cropped NRW 1+2 + Lepi as Validation set
+    annotations: NRW_all_cropped_w_lepi_cleaned
+    # annotations: NRW_all_cropped_w_lepi_cleaned_inv
+    # annotations: lepi_CD_k50 < uncleaned
+
+  EU_MOTHS1:
+    <<: *base_moths_subset
+    folder: moths
+    # Nachtfalter NRW Bücker 1
+    annotations: NRW_B1
+
+  EU_MOTHS2:
+    <<: *base_moths_subset
+    folder: moths
+    # Nachtfalter NRW Bücker 2
+    annotations: NRW_B2
+
+  EU_MOTHS1_CROPPED:
+    <<: *base_moths_subset
+    folder: moths
+    # Nachtfalter NRW Bücker 1, cropped
+    annotations: NRW_B1_cropped
+
+  EU_MOTHS2_CROPPED:
+    <<: *base_moths_subset
+    folder: moths
+    # Nachtfalter NRW Bücker 2, cropped
+    annotations: NRW_B2_cropped
+
+  BREHM1_MOTHS:
+    <<: *base_moths_subset
+    folder: moths
+    annotations: BREHM1
+
+  BREHM2_MOTHS:
+    <<: *base_moths_subset
+    folder: moths
+    annotations: BREHM2
+
+  EU_MOTHS3:
+    <<: *base_moths_subset
+    folder: moths
+    annotations: unlabeled
+
+
+PART_TYPES:
+  GLOBAL:         &parts_global
+    feature_suffix: ""
+
+  UNI2x2:            &parts_uni
+    is_uniform: true
+    feature_suffix: _4parts_uniform
+    rescale_size: !!int -1
+    scales: [ 0.5 ]
+
+  CS_PARTS:        &cs_parts
+    annotations: CS_PARTS
+    feature_suffix: _5parts_cs_parts
+    rescale_size: !!int 427
+    scales: [ -1 ]
+
+  LAZY_CS_PARTS:        &lazy_cs_parts
+    annotations: ORIGINAL
+    feature_suffix: _5parts_cs_parts
+    rescale_size: !!int -1
+    scales: [ -1 ]
+
+  CLUSTER_PARTS:        &cluster_parts
+    annotations: CLUSTER_PARTS
+    feature_suffix: _5parts_cluster_parts
+    rescale_size: !!int 427
+    scales: [ -1 ]
+
+PARTS:
+  # all <DATASET>_<PART_TYPES> combinations are created implicitely.
+  # if you want some changes in the configs, then crete here an entry
+  # and update the config values
+
+
+  EU_MOTHS_CROPPED_L1_pred:
+    <<: *moths_cropped
+    <<: *cs_parts
+    annotations: NRW_all_cropped_w_parts/L1_pred
+
+  EU_MOTHS_CROPPED_L1_full:
+    <<: *moths_cropped
+    <<: *cluster_parts
+    annotations: NRW_all_cropped_w_parts/L1_full
+
+  EU_MOTHS_CROPPED_LEPI_VAL_L1_pred:
+    <<: *moths_cropped_lepi_val
+    <<: *cs_parts
+    annotations: NRW_all_cropped_w_lepi_cleaned_w_parts/L1_pred
+    # annotations: NRW_all_cropped_w_lepi_cleaned_inv_w_parts/L1_pred
+
+  EU_MOTHS_CROPPED_LEPI_VAL_L1_full:
+    <<: *moths_cropped_lepi_val
+    <<: *cluster_parts
+    annotations: NRW_all_cropped_w_lepi_cleaned_w_parts/L1_full
+    # annotations: NRW_all_cropped_w_lepi_cleaned_inv_w_parts/L1_full

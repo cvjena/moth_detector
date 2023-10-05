@@ -1,16 +1,15 @@
-import cv2
 import numpy as np
 import simplejson as json
 import typing as T
 import logging
 
-from skimage import filters
+try:
+	from idac.blobdet.blob_detector_factory import BlobDetectorFactory
+	MCC_AVAILABLE = True
+except ImportError:
+	MCC_AVAILABLE = False
 
-from idac.blobdet.blob_detector_factory import BlobDetectorFactory
-
-from blob_detector import utils
 from blob_detector.core.bbox import BBox
-from blob_detector.core.bbox_proc import Splitter
 from blob_detector.core.binarizers import BinarizerType
 from blob_detector.core.pipeline import Pipeline
 
@@ -183,7 +182,10 @@ class MCCModel(BaseShallowModel):
 		detector_type="adaptive",
 
 		**kwargs):
+		global MCC_AVAILABLE
 		super().__init__(*args, **kwargs)
+
+		assert MCC_AVAILABLE, "MCC Code could not be found!"
 
 		assert self.config is not None, \
 			"Setup of MCC Model has failed: config file was not set!"
