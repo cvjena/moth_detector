@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import time
 
-from chainer.backends.cuda import to_cpu
 from chainer.dataset import convert
 from chainercv.utils import apply_to_iterator
 from chainercv.utils import bbox_iou
@@ -12,16 +11,12 @@ from chainercv.visualizations import vis_bbox
 from chainercv.transforms import resize_bbox
 
 from matplotlib.patches import Rectangle
-from skimage.transform import resize
 from tabulate import tabulate
-from functools import partial
 from tqdm import tqdm
-from functools import partial
 from pathlib import Path
 from contextlib import contextmanager
 
 from cvdatasets.utils import new_iterator
-from cvdatasets.utils import pretty_print_dict
 
 from moth_detector.core import finetuner
 from moth_detector.core.training import trainer

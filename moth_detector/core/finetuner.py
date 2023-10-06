@@ -1,12 +1,4 @@
 import abc
-import logging
-
-try:
-	import chainermn
-except Exception as e: #pragma: no cover
-	_CHAINERMN_AVAILABLE = False #pragma: no cover
-else:
-	_CHAINERMN_AVAILABLE = True
 
 from cvfinetune import finetuner as ft
 
