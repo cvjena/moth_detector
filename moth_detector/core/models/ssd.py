@@ -1,6 +1,6 @@
 import os
 import numpy as np
-import logging
+
 
 # kind of hacky, but should work
 if os.environ.get("BIG") == "1":

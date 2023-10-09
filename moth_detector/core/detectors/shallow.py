@@ -1,4 +1,5 @@
 from multiprocessing.dummy import Pool
+from functools import partial
 
 from moth_detector.core.detectors.base import BaseDetector
 
@@ -12,19 +13,20 @@ class Detector(BaseDetector):
 
 		self.multi_threaded = False
 
-	def predict(self, X, preset="foo"):
+	def predict(self, X, preset="foo", **kw):
 
 		bboxes, labels, scores = [], [], []
 
+		model = partial(self.model, **kw)
 		if self.multi_threaded and len(X) >= 2:
 
 			with Pool() as pool:
-				for bbox, label, score in pool.imap(self.model, X):
+				for bbox, label, score in pool.imap(model, X):
 					bboxes.append(bbox)
 					labels.append(label)
 					scores.append(score)
 		else:
-			for bbox, label, score in map(self.model, X):
+			for bbox, label, score in map(model, X):
 				bboxes.append(bbox)
 				labels.append(label)
 				scores.append(score)

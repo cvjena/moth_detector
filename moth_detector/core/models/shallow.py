@@ -9,6 +9,7 @@ try:
 except ImportError:
 	MCC_AVAILABLE = False
 
+from blob_detector import utils
 from blob_detector.core.bbox import BBox
 from blob_detector.core.binarizers import BinarizerType
 from blob_detector.core.pipeline import Pipeline
@@ -70,7 +71,7 @@ class Model(BaseShallowModel):
 
 	def __init__(self, *args,
 
-				 # min_size: int = 1080,
+				 min_size: int = 1080,
 
 				 # preprocessing
 				 equalize: bool = False,
@@ -107,8 +108,8 @@ class Model(BaseShallowModel):
 		self.img_proc = Pipeline()
 		self.img_proc.find_border()
 
-		# if min_size > 0:
-		# 	self.img_proc.rescale(min_size=min_size, min_scale=0.1)
+		if min_size > 0:
+			self.img_proc.rescale(min_size=min_size, min_scale=0.1)
 
 		self.img_proc.preprocess(equalize=equalize, sigma=sigma)
 		self.img_proc.binarize(type=thresholding,
@@ -142,32 +143,18 @@ class Model(BaseShallowModel):
 		self.img_proc.requires_input(bbox_filter.set_image)
 		self.img_proc.requires_input(scorer.set_image)
 
-	def __call__(self, x):
+	def __call__(self, x, show_intermediate: bool = False):
 		im = self.preprocess(x)
 		res = self.img_proc(im)
 
-		ims = []
-		current = res
-		while current is not None:
-			ims.append(current)
-			current = current.parent
-
-		VIS = False
-
-		if VIS:
-			from matplotlib import pyplot as plt
-			rows = int(np.ceil(np.sqrt(len(ims))))
-			cols = int(np.ceil(len(ims) / rows))
-			fig, axs = plt.subplots(rows, cols, squeeze=False)
-
-			for i, im in enumerate(reversed(ims)):
-				ax = axs[np.unravel_index(i, axs.shape)]
-				im.show(ax, masked=True)
-
-			plt.show()
-			plt.close()
+		if show_intermediate:
+			utils.show_intermediate(res)
 
 		det = self.bbox_proc(res)
+
+		if show_intermediate:
+			utils.show_intermediate(det)
+
 		h, w, *_ = im.shape
 		bboxes = [bbox * (w, h) for bbox in det.bboxes if bbox.is_valid]
 		scores = [bbox.score for bbox in det.bboxes if bbox.is_valid]
