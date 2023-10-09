@@ -1,11 +1,8 @@
 import chainer
-import copy
 import logging
 import matplotlib.pyplot as plt
 import numpy as np
 
-from chainercv import transforms as tr
-from chainercv.links.model.ssd import transforms as ssd_tr
 from matplotlib.patches import Rectangle
 
 from cvdatasets import dataset as ds
